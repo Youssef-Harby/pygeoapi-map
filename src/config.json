@@ -1,0 +1,57 @@
+{
+  "server": {
+    "url": "https://demo.pygeoapi.io/master"
+  },
+  "i18n": {
+    "defaultLocale": "en-US",
+    "fallbackLocale": "en-US",
+    "supportedLocales": [
+      {
+        "code": "en-US",
+        "name": "English",
+        "direction": "ltr",
+        "queryParam": null,
+        "flag": "🇺🇸"
+      },
+      {
+        "code": "ar-EG",
+        "name": "العربية",
+        "direction": "rtl",
+        "queryParam": "?lang=ar-EG",
+        "flag": "🇪🇬"
+      }
+    ]
+  },
+  "map": {
+    "defaultCenter": [30, 31],
+    "defaultZoom": 4,
+    "maxZoom": 18,
+    "minZoom": 2,
+    "basemaps": [
+      {
+        "id": "osm",
+        "name": "OpenStreetMap",
+        "url": "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        "attribution": "&copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors",
+        "maxZoom": 19,
+        "card": {
+          "thumbnail": "https://raw.githubusercontent.com/leaflet-extras/leaflet-providers/master/leaflet-providers-preview/openstreetmap.png",
+          "description": "The standard OpenStreetMap layer",
+          "category": "street"
+        }
+      },
+      {
+        "id": "esri-world-imagery",
+        "name": "ESRI World Imagery",
+        "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        "attribution": "Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community",
+        "maxZoom": 18,
+        "card": {
+          "thumbnail": "https://raw.githubusercontent.com/leaflet-extras/leaflet-providers/master/leaflet-providers-preview/esri-worldimagery.png",
+          "description": "High-resolution satellite and aerial imagery",
+          "category": "satellite"
+        }
+      }
+    ]
+  }
+}

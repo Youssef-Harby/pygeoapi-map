@@ -1,0 +1,24 @@
+{
+  "collections": {
+    "title": "Collections",
+    "loading": "Loading collections...",
+    "error": "Error loading collections",
+    "empty": "No collections found"
+  },
+  "map": {
+    "basemaps": {
+      "title": "Basemaps",
+      "categories": {
+        "street": "Street",
+        "satellite": "Satellite"
+      }
+    }
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "close": "Close",
+    "open": "Open",
+    "select": "Select"
+  }
+}

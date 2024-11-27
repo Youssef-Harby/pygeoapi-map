@@ -2,14 +2,14 @@
   <div class="sidebar">
     <div class="header">
       <h2>{{ $t('collections.title') }}</h2>
-      <LanguageSwitcher />
+      <LanguageSelector />
     </div>
     <div class="collections-list">
       <div v-if="loading" class="loading">
         {{ $t('common.loading') }}
       </div>
       <div v-else-if="error" class="error">
-        {{ error }}
+        {{ $t('common.error') }}
       </div>
       <template v-else>
         <div
@@ -37,12 +37,12 @@
 
 <script>
 import { mapState, mapGetters, mapActions } from 'vuex'
-import LanguageSwitcher from './LanguageSwitcher.vue'
+import LanguageSelector from './LanguageSelector.vue'
 
 export default {
   name: 'Sidebar',
   components: {
-    LanguageSwitcher
+    LanguageSelector
   },
   computed: {
     ...mapState(['collections', 'loading', 'error']),
@@ -78,61 +78,68 @@ export default {
 <style>
 .sidebar {
   width: 300px;
-  background: #f5f5f5;
+  background: white;
   border-right: 1px solid #ddd;
   display: flex;
   flex-direction: column;
-  height: 100%;
+  overflow-y: auto;
 }
 
 .header {
-  padding: 1rem;
+  padding: 15px;
   border-bottom: 1px solid #ddd;
+  background: #f5f5f5;
 }
 
 .header h2 {
-  margin: 0 0 1rem 0;
-  font-size: 1.2rem;
+  margin: 0 0 10px 0;
+  font-size: 1.2em;
+  color: #333;
 }
 
 .collections-list {
   flex: 1;
   overflow-y: auto;
-  padding: 1rem;
+  padding: 10px 0;
 }
 
 .collection-item {
+  padding: 10px 10px 10px 15px;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  transition: background-color 0.2s;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0.5rem;
-  border-bottom: 1px solid #eee;
-  transition: background-color 0.2s;
-  cursor: pointer;
 }
 
 .collection-item:hover {
-  background-color: #eee;
+  background-color: #f8f9fa;
 }
 
 .collection-toggle {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  flex: 1;
+  margin-right: 10px;
+  cursor: pointer;
+}
+
+.collection-toggle input {
+  margin-right: 8px;
 }
 
 .collection-title {
-  font-size: 0.9rem;
-  margin-left: 0.5rem;
+  font-size: 0.9em;
+  color: #333;
+  flex: 1;
 }
 
 .collection-type {
-  font-size: 0.8rem;
-  padding: 0.2rem 0.5rem;
+  font-size: 0.8em;
+  padding: 2px 6px;
   border-radius: 3px;
-  background: #e0e0e0;
-  color: #666;
+  background: #e9ecef;
+  color: #495057;
+  margin-left: auto;
 }
 
 .collection-type.feature {
@@ -150,15 +157,24 @@ export default {
   color: #f57c00;
 }
 
-.loading {
-  padding: 1rem;
+.loading, .error {
+  padding: 15px;
   text-align: center;
   color: #666;
 }
 
 .error {
-  padding: 1rem;
-  color: #d32f2f;
-  text-align: center;
+  color: #dc3545;
+}
+
+/* RTL Specific Styles */
+:dir(rtl) .collection-toggle input {
+  margin-right: 0;
+  margin-left: 8px;
+}
+
+:dir(rtl) .collection-type {
+  margin-left: 0;
+  margin-right: auto;
 }
 </style>

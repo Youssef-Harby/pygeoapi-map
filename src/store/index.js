@@ -1,12 +1,15 @@
 import { createStore } from 'vuex'
 import { fetchCollections } from '@/api/pygeoapi'
+import i18n, { loadLocaleMessages } from '@/i18n'
+import config from '@/config.json'
 
 export default createStore({
   state: {
     collections: [],
     activeCollections: [],
     loading: false,
-    error: null
+    error: null,
+    locale: config.i18n.defaultLocale
   },
   mutations: {
     SET_COLLECTIONS(state, collections) {
@@ -38,6 +41,10 @@ export default createStore({
     SET_ERROR(state, error) {
       console.log('Mutation: SET_ERROR', error)
       state.error = error
+    },
+    SET_LOCALE(state, locale) {
+      state.locale = locale
+      i18n.global.locale.value = locale
     }
   },
   actions: {
@@ -65,6 +72,12 @@ export default createStore({
         }
       })
       commit('TOGGLE_COLLECTION', collectionId)
+    },
+    async changeLocale({ commit }, locale) {
+      // Load locale messages if needed
+      await loadLocaleMessages(locale)
+      // Set the new locale
+      commit('SET_LOCALE', locale)
     }
   },
   getters: {
@@ -72,6 +85,8 @@ export default createStore({
       const isActive = state.activeCollections.includes(collectionId)
       console.log('Getter: isCollectionActive', { collectionId, isActive })
       return isActive
-    }
+    },
+    currentLocale: state => state.locale,
+    supportedLocales: () => config.i18n.supportedLocales
   }
 })
