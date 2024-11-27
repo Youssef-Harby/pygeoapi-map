@@ -1,0 +1,56 @@
+# Vue.js
+.DS_Store
+node_modules
+/dist
+
+# local env files
+.env.local
+.env.*.local
+
+# Log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Build and test coverage
+/coverage
+/tests/e2e/reports/
+selenium-debug.log
+chromedriver.log
+geckodriver.log
+
+# Optional: local development files
+*.local
+.env
+
+# System files
+Thumbs.db
+.DS_Store
+*.pem
+
+# Temporary files
+*.log
+*.tmp
+*.temp
+
+# Optional: Python virtual environment (if using any Python scripts)
+venv/
+env/
+__pycache__/
+*.py[cod]
+
+# Optional: IDE specific files
+.settings/
+.project
+.classpath
+.factorypath
