@@ -8,12 +8,12 @@
     "lint": "vue-cli-service lint"
   },
   "dependencies": {
-    "axios": "^1.4.0",
-    "core-js": "^3.8.3",
-    "leaflet": "^1.7.1",
-    "vue": "^3.2.13",
-    "vue-i18n": "^9.2.2",
-    "vuex": "^4.0.2"
+    "axios": "^1.7.8",
+    "core-js": "^3.39.0",
+    "leaflet": "^1.9.4",
+    "vue": "^3.5.13",
+    "vue-i18n": "^10.0.4",
+    "vuex": "^4.1.0"
   },
   "devDependencies": {
     "@babel/core": "^7.26.0",
@@ -22,8 +22,8 @@
     "@vue/cli-plugin-eslint": "~5.0.0",
     "@vue/cli-service": "~5.0.0",
     "babel-eslint": "^10.1.0",
-    "eslint": "^7.32.0",
-    "eslint-plugin-vue": "^8.0.3"
+    "eslint": "^9.15.0",
+    "eslint-plugin-vue": "^9.31.0"
   },
   "description": "## Overview This is a Vue.js application that retrieves collections from the PyGeoAPI demo server and displays them on an interactive Leaflet map with a side panel for layer toggling and language switching.",
   "main": "index.js",
