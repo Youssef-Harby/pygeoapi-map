@@ -12,9 +12,7 @@ RUN npm ci
 # Copy project files
 COPY . .
 
-# Build the app with environment variables
-ARG VITE_PYGEOAPI_SERVER_URL
-ENV VITE_PYGEOAPI_SERVER_URL=${VITE_PYGEOAPI_SERVER_URL:-https://demo.pygeoapi.io/master}
+# Build the app
 RUN npm run build
 
 # Production stage
