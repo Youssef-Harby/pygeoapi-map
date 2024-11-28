@@ -1,7 +1,7 @@
 <template>
   <aside class="sidebar" :class="{ 'sidebar-collapsed': isCollapsed }">
-    <div class="collections-header">
-      <div class="header-content">
+    <div class="sidebar-header">
+      <div class="collections-header">
         <h2>{{ $t('sidebar.collections') }}</h2>
         <div class="search-container">
           <input 
@@ -10,9 +10,6 @@
             :placeholder="$t('sidebar.searchPlaceholder')"
             class="search-input"
           />
-          <span class="search-icon">
-            <i class="fas fa-search"></i>
-          </span>
         </div>
       </div>
     </div>
@@ -157,43 +154,39 @@ export default {
   width: var(--sidebar-collapsed-width);
 }
 
-.collections-header {
-  position: sticky;
-  top: 0;
-  background-color: var(--bg-color);
-  z-index: 3;
-  padding: 16px;
+.sidebar-header {
+  padding: 12px;
   border-bottom: 1px solid var(--border-color);
 }
 
-.header-content {
+.collections-header {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 8px;
 }
 
-.header-content h2 {
+.collections-header h2 {
   margin: 0;
-  font-size: 18px;
+  font-size: 1.2rem;
   font-weight: 600;
   color: var(--text-color);
+  flex-shrink: 0;
 }
 
 .search-container {
-  position: relative;
-  width: 100%;
-  margin: 8px 0;
+  flex: 1;
+  max-width: 200px;
 }
 
 .search-input {
   width: 100%;
-  padding: 8px 32px 8px 12px;
+  padding: 4px 8px;
+  font-size: 0.9rem;
   border: 1px solid var(--border-color);
-  border-radius: 6px;
-  font-size: 14px;
-  background: var(--bg-color);
+  border-radius: 4px;
+  background-color: var(--bg-color-light);
   color: var(--text-color);
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
 }
 
 .search-input:focus {
@@ -202,21 +195,9 @@ export default {
   box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.1);
 }
 
-.search-icon {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--text-muted);
-}
-
-[dir="rtl"] .search-icon {
-  right: auto;
-  left: 8px;
-}
-
-[dir="rtl"] .search-input {
-  padding: 8px 12px 8px 32px;
+.search-input::placeholder {
+  color: var(--text-color-light);
+  opacity: 0.7;
 }
 
 .collections-container {
