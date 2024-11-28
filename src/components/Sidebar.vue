@@ -162,60 +162,61 @@ export default {
   top: 0;
   background-color: var(--bg-color);
   z-index: 3;
-  padding: 12px;
+  padding: 16px;
   border-bottom: 1px solid var(--border-color);
 }
 
 .header-content {
   display: flex;
-  align-items: center;
-  gap: 4px;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .header-content h2 {
   margin: 0;
-  font-size: 1.1rem;
+  font-size: 18px;
   font-weight: 600;
   color: var(--text-color);
-  white-space: nowrap;
 }
 
 .search-container {
   position: relative;
-  width: 120px;
-  min-width: 0;
-  transition: width 0.2s ease;
-}
-
-.search-container:focus-within {
-  width: 150px;
+  width: 100%;
+  margin: 8px 0;
 }
 
 .search-input {
   width: 100%;
-  padding: 2px 20px 2px 6px;
+  padding: 8px 32px 8px 12px;
   border: 1px solid var(--border-color);
-  border-radius: 4px;
-  font-size: 12px;
-  outline: none;
-  transition: all 0.2s ease;
-  background-color: white;
-  height: 22px;
+  border-radius: 6px;
+  font-size: 14px;
+  background: var(--bg-color);
+  color: var(--text-color);
+  transition: all 0.3s ease;
 }
 
 .search-input:focus {
+  outline: none;
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+  box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.1);
 }
 
 .search-icon {
   position: absolute;
-  right: 5px;
+  right: 8px;
   top: 50%;
   transform: translateY(-50%);
   color: var(--text-muted);
-  pointer-events: none;
-  font-size: 11px;
+}
+
+[dir="rtl"] .search-icon {
+  right: auto;
+  left: 8px;
+}
+
+[dir="rtl"] .search-input {
+  padding: 8px 12px 8px 32px;
 }
 
 .collections-container {
@@ -227,15 +228,21 @@ export default {
   gap: 12px;
 }
 
+.collections-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+}
+
 .collection-item {
-  padding: 16px;
+  padding: 12px;
   background-color: white;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.05);
   cursor: pointer;
   transition: all 0.3s ease;
   position: relative;
-  margin: 8px;
   border-left: 4px solid transparent;
 }
 
@@ -247,32 +254,14 @@ export default {
 .collection-item:hover {
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
   transform: translateY(-1px);
-  z-index: 2;
+  z-index: 10;
 }
 
-.collection-item.active {
-  background-color: var(--bg-color);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-
-.collection-item.active .collection-title {
-  color: var(--text-color);
-  font-weight: 600;
-}
-
-.collection-header {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  padding: 0;
-  margin: 0;
-}
-
-.collection-info {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  width: 100%;
+.collection-item:hover .collection-title {
+  white-space: normal;
+  overflow: visible;
+  position: relative;
+  z-index: 11;
 }
 
 .collection-title {
@@ -285,11 +274,27 @@ export default {
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: 1.4;
+  transition: all 0.3s ease;
 }
 
-.collection-item:hover .collection-title {
-  white-space: normal;
-  overflow: visible;
+.collection-item.active .collection-title {
+  color: var(--text-color);
+  font-weight: 600;
+}
+
+.collection-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.collection-header {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 0;
+  margin: 0;
 }
 
 .collection-type {
@@ -353,52 +358,12 @@ export default {
   color: #757575;
 }
 
-.collections-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 8px;
-}
-
-.collections-container {
-  overflow-y: auto;
-  height: calc(100% - 60px);
-  padding-bottom: 16px;
-}
-
-/* Scrollbar Styles */
-.collections-container::-webkit-scrollbar {
-  width: 8px;
-}
-
-.collections-container::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.collections-container::-webkit-scrollbar-thumb {
-  background-color: var(--scrollbar-thumb);
-  border-radius: 4px;
-}
-
-.collections-container::-webkit-scrollbar-thumb:hover {
-  background-color: var(--scrollbar-thumb-hover);
-}
-
 /* RTL Support */
 [dir="rtl"] .sidebar {
   left: auto;
   right: 0;
   border-right: none;
   border-left: 1px solid var(--border-color);
-}
-
-[dir="rtl"] .search-input {
-  padding: 2px 6px 2px 20px;
-}
-
-[dir="rtl"] .search-icon {
-  right: auto;
-  left: 5px;
 }
 
 [dir="rtl"] .collection-item.active {
@@ -481,5 +446,11 @@ export default {
 .sidebar-collapsed .search-container,
 .sidebar-collapsed h2 {
   display: none;
+}
+
+.empty-state {
+  padding: 24px;
+  text-align: center;
+  color: var(--text-muted);
 }
 </style>

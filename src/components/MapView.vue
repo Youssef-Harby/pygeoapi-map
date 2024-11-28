@@ -109,35 +109,22 @@ export default {
       })
     },
     async loadCollectionLayer(collection) {
-      if (!this.map || !this.isInitialized) {
-        console.warn('Map not initialized yet, retrying in 200ms')
-        setTimeout(() => this.loadCollectionLayer(collection), 200)
-        return
-      }
-
-      if (!collection) {
-        console.warn('Invalid collection provided')
-        return
-      }
+      if (!this.map || !collection) return
 
       try {
-        console.log('MapView - Loading collection:', collection.id)
-        
-        // Create or get layer group
+        console.log('Loading collection layer:', collection.id)
+        const renderType = getCollectionRenderType(collection)
+        console.log('Collection render type:', renderType)
+
+        // Create layer group if it doesn't exist
         if (!this.layerGroups[collection.id]) {
-          this.layerGroups[collection.id] = L.layerGroup()
+          this.layerGroups[collection.id] = L.layerGroup().addTo(this.map)
         }
         const layerGroup = this.layerGroups[collection.id]
 
         // Clear existing layers
         layerGroup.clearLayers()
 
-        // Get collection details and determine render type
-        const details = await fetchCollectionDetails(this.serverUrl, collection.id, this.locale)
-        const renderType = getCollectionRenderType(details)
-        console.log('MapView - Collection type:', { collectionId: collection.id, renderType, details })
-
-        // Handle different collection types
         switch (renderType) {
           case 'feature':
             await this.handleFeatureCollection(collection, layerGroup)
@@ -148,17 +135,20 @@ export default {
           case 'tile':
             await this.handleTileCollection(collection, layerGroup)
             break
+          case 'record':
+            const hasGeoJSONItems = collection.links?.some(link => 
+              (link.rel === 'items' && link.type === 'application/geo+json') ||
+              (link.rel === 'items' && link.type === 'application/json')
+            )
+            if (hasGeoJSONItems) {
+              await this.handleRecordGeoJSONCollection(collection, layerGroup)
+            }
+            break
           default:
-            console.warn(`MapView - Unknown collection type: ${renderType}`)
+            console.warn(`Unsupported collection type: ${renderType}`)
         }
-
-        // Add layer group to map if not already added
-        if (!this.map.hasLayer(layerGroup)) {
-          layerGroup.addTo(this.map)
-        }
-
       } catch (error) {
-        console.error(`MapView - Error loading collection ${collection.id}:`, error)
+        console.error('Error loading collection layer:', error)
       }
     },
     async handleFeatureCollection(collection, layerGroup) {
@@ -264,6 +254,55 @@ export default {
         console.log('Tile layer added:', collection.id)
       } catch (error) {
         console.error(`Error loading tiles for collection ${collection.id}:`, error)
+      }
+    },
+    async handleRecordGeoJSONCollection(collection, layerGroup) {
+      try {
+        const [features, queryables] = await Promise.all([
+          fetchFeatures(this.serverUrl, collection.id, {}, this.locale),
+          fetchCollectionQueryables(this.serverUrl, collection.id, this.locale).catch(() => null)
+        ])
+
+        if (!features || !features.features) {
+          console.warn('No features found in record-geojson collection')
+          return
+        }
+
+        const geoJsonLayer = L.geoJSON(features, {
+          style: () => ({
+            color: collection.color || '#3388ff',
+            weight: 2,
+            opacity: 0.8,
+            fillOpacity: 0.2
+          }),
+          pointToLayer: (feature, latlng) => {
+            return L.circleMarker(latlng, {
+              radius: 8,
+              fillColor: collection.color || '#3388ff',
+              color: '#fff',
+              weight: 1,
+              opacity: 1,
+              fillOpacity: 0.8
+            })
+          },
+          onEachFeature: (feature, layer) => {
+            if (feature.properties) {
+              const popupContent = queryables
+                ? this.createPopupContent(feature.properties, queryables)
+                : this.createSimplePopupContent(feature.properties)
+              layer.bindPopup(popupContent)
+            }
+          }
+        }).addTo(layerGroup)
+
+        // Update bounds
+        const bounds = geoJsonLayer.getBounds()
+        if (bounds.isValid()) {
+          this.layerBounds[collection.id] = bounds
+          this.updateMapBounds()
+        }
+      } catch (error) {
+        console.error('Error handling record-geojson collection:', error)
       }
     },
     createPopupContent(properties, queryables) {

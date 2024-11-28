@@ -119,33 +119,46 @@ export async function fetchTileSetInfo(serverUrl, collectionId, locale) {
 }
 
 export function getCollectionRenderType(collection) {
-  if (!collection) {
-    console.warn('No collection provided to getCollectionRenderType')
-    return 'unknown'
+  if (!collection) return 'unknown'
+
+  // Check for record collection with GeoJSON items
+  if (collection.itemType === 'record' && collection.links) {
+    const hasGeoJSONItems = collection.links.some(link => 
+      (link.rel === 'items' && link.type === 'application/geo+json') ||
+      (link.rel === 'items' && link.type === 'application/json')
+    )
+    if (hasGeoJSONItems) return 'record'
   }
 
-  // Check links for specific capabilities
-  const links = collection.links || []
-  const hasWMS = links.some(link => link.rel === 'wms')
-  const hasTiles = links.some(link => link.rel === 'tiles')
-  const hasItems = links.some(link => link.rel === 'items')
-
-  // Check collection type and links
-  if (collection.itemType === 'coverage' || hasWMS) {
+  // Check for coverage collection
+  if (collection.itemType === 'coverage' || 
+      (collection.links && collection.links.some(link => 
+        link.rel === 'coverage' || 
+        link.type?.includes('coverage')))) {
     return 'coverage'
-  } else if (hasTiles) {
+  }
+
+  // Check for tile collection
+  if (collection.itemType === 'tile' || 
+      (collection.links && collection.links.some(link => 
+        link.rel === 'tiles' || 
+        link.type?.includes('mvt')))) {
     return 'tile'
-  } else if (collection.itemType === 'record') {
-    return 'record'
-  } else if (hasItems || collection.itemType === 'feature') {
+  }
+
+  // Check for feature collection
+  if (collection.itemType === 'feature' || 
+      (collection.links && collection.links.some(link => 
+        link.rel === 'items' && 
+        (link.type === 'application/geo+json' || 
+         link.type === 'application/json')))) {
     return 'feature'
   }
 
-  // Log warning for unknown collection type
-  console.warn('Unknown collection type:', {
-    itemType: collection.itemType,
-    links: links.map(l => ({ rel: l.rel, type: l.type }))
-  })
+  // Default to record type
+  if (collection.itemType === 'record') {
+    return 'record'
+  }
 
   return 'unknown'
 }

@@ -10,8 +10,9 @@
 
 <script>
 import { mapActions } from 'vuex'
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import { useStore } from 'vuex'
+import { useI18n } from 'vue-i18n'
 import Header from '@/components/Header.vue'
 import Sidebar from '@/components/Sidebar.vue'
 import MapView from '@/components/MapView.vue'
@@ -26,11 +27,25 @@ export default {
   },
   setup() {
     const store = useStore()
+    const { locale } = useI18n()
     
     const isRTL = computed(() => {
-      const currentLocale = store.getters.currentLocale
-      return config.i18n.supportedLocales.find(locale => locale.code === currentLocale)?.direction === 'rtl'
+      const currentLocale = store.state.locale || locale.value
+      const localeConfig = config.i18n.supportedLocales.find(l => l.code === currentLocale)
+      return localeConfig?.direction === 'rtl'
     })
+
+    // Watch for locale changes
+    watch(() => store.state.locale, (newLocale) => {
+      if (newLocale) {
+        const localeConfig = config.i18n.supportedLocales.find(l => l.code === newLocale)
+        if (localeConfig) {
+          document.documentElement.dir = localeConfig.direction
+          document.documentElement.lang = newLocale
+          localStorage.setItem('pygeoapi_locale', newLocale)
+        }
+      }
+    }, { immediate: true })
 
     return {
       isRTL

@@ -70,109 +70,66 @@ export default createStore({
   },
   mutations: {
     SET_COLLECTIONS(state, collections) {
-      console.log('Mutation: SET_COLLECTIONS', collections)
       state.collections = collections
     },
     SET_ACTIVE_COLLECTIONS(state, collectionIds) {
-      console.log('Mutation: SET_ACTIVE_COLLECTIONS', collectionIds)
-      state.activeCollections = []
-      if (collectionIds && collectionIds.length) {
-        state.activeCollections = collectionIds
-      }
+      state.activeCollections = collectionIds
     },
     TOGGLE_COLLECTION(state, { collectionId, currentlyActive }) {
-      console.log('Mutation: TOGGLE_COLLECTION', {
-        collectionId,
-        currentlyActive
-      })
-      const index = state.activeCollections.indexOf(collectionId)
-      if (index === -1) {
-        state.activeCollections.push(collectionId)
-        console.log(`Collection ${collectionId} activated. New active collections:`, state.activeCollections)
+      if (currentlyActive) {
+        state.activeCollections = state.activeCollections.filter(id => id !== collectionId)
       } else {
-        state.activeCollections.splice(index, 1)
-        console.log(`Collection ${collectionId} deactivated. New active collections:`, state.activeCollections)
+        state.activeCollections.push(collectionId)
       }
     },
     SET_LOADING(state, loading) {
-      console.log('Mutation: SET_LOADING', loading)
       state.loading = loading
     },
     SET_ERROR(state, error) {
-      console.log('Mutation: SET_ERROR', error)
       state.error = error
     },
     SET_LOCALE(state, locale) {
-      if (!locale) {
-        console.warn('Attempted to set empty locale')
-        return
-      }
-      
-      // Verify if locale is supported
-      if (!config.i18n.supportedLocales.some(l => l.code === locale)) {
-        console.warn(`Unsupported locale: ${locale}`)
-        return
-      }
-
-      console.log('Mutation: SET_LOCALE', locale)
       state.locale = locale
       i18n.global.locale.value = locale
-      
-      // Store in localStorage for persistence
-      localStorage.setItem('pygeoapi_locale', locale)
-      
-      // Update HTML dir attribute for RTL support
-      const isRTL = config.i18n.supportedLocales.find(l => l.code === locale)?.direction === 'rtl'
-      document.documentElement.dir = isRTL ? 'rtl' : 'ltr'
-      // Update HTML lang attribute
-      document.documentElement.lang = locale
+      const localeConfig = config.i18n.supportedLocales.find(l => l.code === locale)
+      if (localeConfig) {
+        document.documentElement.dir = localeConfig.direction
+        document.documentElement.lang = locale
+        localStorage.setItem('pygeoapi_locale', locale)
+      }
     },
     SET_SERVER_URL(state, url) {
-      console.log('Mutation: SET_SERVER_URL', url)
-      if (!url) {
-        console.warn('Attempted to set empty server URL')
-        return
-      }
-      // Remove trailing slash for consistency
-      state.serverUrl = url.replace(/\/$/, '')
-      // Store in localStorage for persistence
-      localStorage.setItem('pygeoapi_server_url', state.serverUrl)
+      state.serverUrl = url
+      localStorage.setItem('pygeoapi_server_url', url)
     },
     SET_COLLECTION_COLOR(state, { id, color }) {
       state.collectionColors[id] = color
     }
   },
   getters: {
-    isCollectionActive: (state) => (id) => {
-      return state.activeCollections.includes(id)
+    isCollectionActive: (state) => (collectionId) => {
+      return state.activeCollections.includes(collectionId)
     },
-    getCollectionColor: (state) => (id) => {
-      if (!state.collectionColors[id]) {
-        // Generate and store a random color if none exists
+    getCollectionColor: (state) => (collectionId) => {
+      if (!state.collectionColors[collectionId]) {
         const color = generateRandomColor(state)
-        state.collectionColors[id] = color
+        state.collectionColors[collectionId] = color
       }
-      return state.collectionColors[id]
+      return state.collectionColors[collectionId]
     },
-    supportedLocales: () => config.i18n.supportedLocales
+    supportedLocales: () => config.i18n.supportedLocales,
+    currentLocale: (state) => state.locale
   },
   actions: {
     async fetchCollections({ commit, state }) {
+      commit('SET_LOADING', true)
+      commit('SET_ERROR', null)
       try {
-        console.log('Action: fetchCollections', { serverUrl: state.serverUrl })
-        commit('SET_LOADING', true)
-        commit('SET_ERROR', null)
-        // Clear active collections when fetching new ones
-        commit('SET_ACTIVE_COLLECTIONS', [])
-        
-        const collections = await fetchCollections(state.serverUrl, state.locale)
+        const collections = await fetchCollections(state.serverUrl)
         commit('SET_COLLECTIONS', collections)
-        
-        return collections
       } catch (error) {
-        console.error('Error fetching collections:', error)
         commit('SET_ERROR', error.message)
-        return []
+        console.error('Error fetching collections:', error)
       } finally {
         commit('SET_LOADING', false)
       }
@@ -181,35 +138,26 @@ export default createStore({
       const currentlyActive = state.activeCollections.includes(collectionId)
       commit('TOGGLE_COLLECTION', { collectionId, currentlyActive })
     },
-    async changeLocale({ commit, dispatch }, locale) {
+    async changeLocale({ commit }, locale) {
       try {
-        console.log('Action: changeLocale', locale)
-        // Load locale messages if not already loaded
         await loadLocaleMessages(locale)
-        
         commit('SET_LOCALE', locale)
-        // Refetch collections with new locale
-        await dispatch('fetchCollections')
       } catch (error) {
         console.error('Error changing locale:', error)
-        commit('SET_ERROR', error.message)
       }
     },
-    async updateServerUrl({ commit, dispatch }, url) {
-      try {
-        console.log('Action: updateServerUrl', url)
-        if (!url) {
-          throw new Error('Server URL cannot be empty')
-        }
-        commit('SET_SERVER_URL', url)
-        // Refetch collections with new server URL
-        await dispatch('fetchCollections')
-      } catch (error) {
-        console.error('Error updating server URL:', error)
-        commit('SET_ERROR', error.message)
-        // Revert to default URL on error
-        commit('SET_SERVER_URL', config.server.url)
+    updateServerUrl({ commit, dispatch }, url) {
+      if (!url) {
+        console.error('Invalid server URL')
+        return
       }
+      
+      // Remove trailing slash if present
+      const cleanUrl = url.replace(/\/$/, '')
+      commit('SET_SERVER_URL', cleanUrl)
+      
+      // Refresh collections with new server URL
+      dispatch('fetchCollections')
     },
     setCollectionColor({ commit }, { id, color }) {
       commit('SET_COLLECTION_COLOR', { id, color })
