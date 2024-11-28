@@ -1,5 +1,5 @@
 import axios from 'axios'
-import config from '@/config.json'
+import store from '@/store'
 
 // Create axios instance with dynamic base URL
 const api = axios.create({
@@ -41,6 +41,8 @@ api.interceptors.response.use(
 
 // Helper function to get language query parameter
 function getLanguageParam(locale) {
+  const config = store.state.config
+  if (!config || !config.i18n) return ''
   const localeConfig = config.i18n.supportedLocales.find(l => l.code === locale)
   return localeConfig?.queryParam || ''
 }

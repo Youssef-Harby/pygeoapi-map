@@ -16,7 +16,6 @@ import { useI18n } from 'vue-i18n'
 import Header from '@/components/Header.vue'
 import Sidebar from '@/components/Sidebar.vue'
 import MapView from '@/components/MapView.vue'
-import config from './config.json'
 
 export default {
   name: 'App',
@@ -31,14 +30,16 @@ export default {
     
     const isRTL = computed(() => {
       const currentLocale = store.state.locale || locale.value
+      const config = store.state.config
+      if (!config || !config.i18n) return false
       const localeConfig = config.i18n.supportedLocales.find(l => l.code === currentLocale)
       return localeConfig?.direction === 'rtl'
     })
 
     // Watch for locale changes
     watch(() => store.state.locale, (newLocale) => {
-      if (newLocale) {
-        const localeConfig = config.i18n.supportedLocales.find(l => l.code === newLocale)
+      if (newLocale && store.state.config) {
+        const localeConfig = store.state.config.i18n.supportedLocales.find(l => l.code === newLocale)
         if (localeConfig) {
           document.documentElement.dir = localeConfig.direction
           document.documentElement.lang = newLocale

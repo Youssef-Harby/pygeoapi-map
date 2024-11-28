@@ -30,7 +30,10 @@ export default {
     }
   },
   computed: {
-    ...mapState(['collections', 'activeCollections', 'serverUrl', 'locale']),
+    ...mapState(['collections', 'activeCollections', 'config', 'locale']),
+    serverUrl() {
+      return this.config?.server?.url
+    },
     activeCollectionObjects() {
       console.log('Computing active collection objects:', {
         activeIds: this.activeCollections,
@@ -154,6 +157,9 @@ export default {
     async handleFeatureCollection(collection, layerGroup) {
       try {
         console.log('Handling feature collection:', collection.id)
+        if (!this.serverUrl) {
+          throw new Error('Server URL not configured')
+        }
         const features = await fetchFeatures(this.serverUrl, collection.id, {}, this.locale)
         const queryables = await fetchCollectionQueryables(this.serverUrl, collection.id, this.locale)
         
@@ -206,20 +212,17 @@ export default {
               }
             })
           }
-        })
+        }).addTo(layerGroup)
 
-        layerGroup.addLayer(geoJsonLayer)
-        this.map.addLayer(layerGroup)
+        // Store layer bounds for later use
+        this.layerBounds[collection.id] = geoJsonLayer.getBounds()
 
-        // Store bounds for this collection
-        const bounds = geoJsonLayer.getBounds()
-        if (bounds.isValid()) {
-          this.layerBounds[collection.id] = bounds
-          this.map.fitBounds(bounds, { padding: [50, 50] })
+        // Fit map to layer bounds if this is the first layer
+        if (Object.keys(this.layerBounds).length === 1) {
+          this.map.fitBounds(geoJsonLayer.getBounds())
         }
-
       } catch (error) {
-        console.error('Error handling feature collection:', collection.id, error)
+        console.error(`Error handling feature collection ${collection.id}:`, error)
       }
     },
     async handleCoverageCollection(collection, layerGroup) {

@@ -39,7 +39,6 @@
 <script>
 import { mapState, mapGetters, mapActions } from 'vuex'
 import { ref, onMounted, watch } from 'vue'
-import config from '@/config.json'
 
 export default {
   name: 'Header',
@@ -49,9 +48,7 @@ export default {
 
     onMounted(() => {
       // Initialize tempServerUrl with the current store value
-      const storedUrl = localStorage.getItem('pygeoapi_server_url')
-      const envUrl = import.meta.env?.VITE_PYGEOAPI_SERVER_URL
-      tempServerUrl.value = storedUrl || envUrl || config.server.url
+      tempServerUrl.value = localStorage.getItem('pygeoapi_server_url') || ''
     })
 
     return {
@@ -60,10 +57,12 @@ export default {
     }
   },
   computed: {
-    ...mapState(['locale', 'serverUrl']),
-    ...mapGetters(['supportedLocales']),
+    ...mapGetters(['supportedLocales', 'currentLocale', 'serverUrl']),
     currentServer() {
-      return this.serverUrl || config.server.url
+      return this.serverUrl
+    },
+    locale() {
+      return this.currentLocale
     }
   },
   methods: {

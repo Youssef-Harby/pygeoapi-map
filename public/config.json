@@ -1,6 +1,6 @@
 {
   "server": {
-    "url": "https://demo.pygeoapi.io/master"
+    "url": "https://demo.pygeoapi.io/master/"
   },
   "i18n": {
     "defaultLocale": "en-US",
