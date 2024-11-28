@@ -10,7 +10,8 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  # github.repository_owner is automatically converted to lowercase
+  IMAGE_NAME: ${{ github.repository_owner }}/pygeoapi-map
 
 jobs:
   build:
@@ -18,14 +19,13 @@ jobs:
     permissions:
       contents: read
       packages: write
-      id-token: write # Needed for signing
-      security-events: write # Needed for GitHub Security tab
+      id-token: write
+      security-events: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Install the cosign tool except on PR
       - name: Install cosign
         if: github.event_name != 'pull_request'
         uses: sigstore/cosign-installer@v3.3.0
@@ -57,7 +57,6 @@ jobs:
             type=sha,format=long
             type=raw,value=latest,enable={{is_default_branch}}
 
-      # Build and push Docker image with Buildx
       - name: Build and push Docker image
         id: build-and-push
         uses: docker/build-push-action@v5
@@ -77,22 +76,27 @@ jobs:
         if: github.event_name != 'pull_request'
         env:
           # This step uses the identity token to provision an ephemeral certificate
-          # against the sigstore community Fulcio instance.
           COSIGN_EXPERIMENTAL: "true"
-        run: echo "${{ steps.build-and-push.outputs.digest }}" | cosign sign --yes ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:${{ steps.build-and-push.outputs.digest }}
+        # Remove the extra "sha256:" prefix from the digest
+        run: |
+          DIGEST="${{ steps.build-and-push.outputs.digest }}"
+          cosign sign --yes ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${DIGEST}
 
       # Run Trivy vulnerability scanner
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
+        if: github.event_name != 'pull_request'
         with:
           image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
           format: 'sarif'
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
+          timeout: '10m'
 
       # Upload Trivy scan results to GitHub Security tab
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        if: github.event_name != 'pull_request' && always()
         with:
           sarif_file: 'trivy-results.sarif'
+          category: 'Trivy'
