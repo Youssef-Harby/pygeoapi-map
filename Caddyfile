@@ -1,0 +1,25 @@
+:80 {
+    root * /srv
+    encode gzip
+
+    # Handle all paths under /pygeoapi-map/
+    handle_path /pygeoapi-map/* {
+        try_files {path} /index.html
+        file_server
+    }
+
+    # Fallback for SPA
+    handle {
+        try_files {path} /index.html
+        file_server
+    }
+
+    # Security headers
+    header {
+        X-Frame-Options "SAMEORIGIN"
+        X-XSS-Protection "1; mode=block"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "no-referrer-when-downgrade"
+        -Server
+    }
+}

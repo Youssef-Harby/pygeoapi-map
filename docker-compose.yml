@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  pygeoapi-map:
+    image: ghcr.io/youssef-harby/pygeoapi-map:latest
+    container_name: pygeoapi-map
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - VITE_PYGEOAPI_SERVER_URL=https://demo.pygeoapi.io/master
+    environment:
+      - VITE_PYGEOAPI_SERVER_URL=https://demo.pygeoapi.io/master
+    ports:
+      - "8080:80"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - pygeoapi-network
+
+volumes:
+  caddy_data:
+  caddy_config:
+
+networks:
+  pygeoapi-network:
+    name: pygeoapi-network
+    driver: bridge
