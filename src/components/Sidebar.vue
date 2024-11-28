@@ -44,20 +44,17 @@
             :key="collection.id"
             class="collection-item"
             :class="{ active: isCollectionActive(collection.id) }"
+            :style="{ borderColor: isCollectionActive(collection.id) ? getCollectionColor(collection.id) : 'transparent' }"
             @click="toggleCollection(collection.id)"
           >
             <div class="collection-info">
               <div class="collection-header">
                 <h3 class="collection-title">{{ collection.title || collection.id }}</h3>
-                <button 
-                  class="toggle-button"
-                  :class="{ active: isCollectionActive(collection.id) }"
-                  @click.stop="toggleCollection(collection.id)"
-                >
-                  <i class="fas" :class="isCollectionActive(collection.id) ? 'fa-eye-slash' : 'fa-eye'"></i>
-                </button>
               </div>
-              <span class="collection-type" :class="getCollectionType(collection)">
+              <span 
+                class="collection-type" 
+                :class="getCollectionType(collection)"
+              >
                 {{ getCollectionType(collection) }}
               </span>
             </div>
@@ -103,6 +100,10 @@ export default {
       return type.toLowerCase()
     }
 
+    const getCollectionColor = (collectionId) => {
+      return store.getters.getCollectionColor(collectionId)
+    }
+
     const filteredCollections = computed(() => {
       if (!searchQuery.value) return collections.value
       const query = searchQuery.value.toLowerCase()
@@ -111,10 +112,6 @@ export default {
          collection.id?.toLowerCase().includes(query))
       )
     })
-
-    const toggleSidebar = () => {
-      isCollapsed.value = !isCollapsed.value
-    }
 
     const toggleCollection = (id) => {
       store.dispatch('toggleCollection', id)
@@ -132,10 +129,10 @@ export default {
       searchQuery,
       filteredCollections,
       isCollectionActive,
-      toggleSidebar,
       toggleCollection,
       retryFetch,
-      getCollectionType
+      getCollectionType,
+      getCollectionColor
     }
   }
 }
@@ -230,12 +227,6 @@ export default {
   gap: 12px;
 }
 
-.collections-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
 .collection-item {
   padding: 16px;
   background-color: white;
@@ -244,7 +235,13 @@ export default {
   cursor: pointer;
   transition: all 0.3s ease;
   position: relative;
-  z-index: 1;
+  margin: 8px;
+  border-left: 4px solid transparent;
+}
+
+[dir="rtl"] .collection-item {
+  border-left: none;
+  border-right: 4px solid transparent;
 }
 
 .collection-item:hover {
@@ -255,33 +252,38 @@ export default {
 
 .collection-item.active {
   background-color: var(--bg-color);
-  border-left: 4px solid var(--primary-color);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.collection-item.active .collection-title {
+  color: var(--text-color);
+  font-weight: 600;
+}
+
+.collection-header {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 0;
+  margin: 0;
 }
 
 .collection-info {
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-.collection-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  min-height: 24px;
+  width: 100%;
 }
 
 .collection-title {
   margin: 0;
+  padding: 0;
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text-color);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  flex: 1;
-  transition: all 0.3s ease;
   line-height: 1.4;
 }
 
@@ -290,39 +292,15 @@ export default {
   overflow: visible;
 }
 
-.toggle-button {
-  background: none;
-  border: none;
-  padding: 6px;
-  cursor: pointer;
-  color: var(--text-muted);
-  border-radius: 4px;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  flex-shrink: 0;
-}
-
-.toggle-button:hover {
-  background-color: var(--hover-bg);
-  color: var(--text-color);
-}
-
-.toggle-button.active {
-  color: var(--primary-color);
-  background-color: rgba(0,123,255,0.1);
-}
-
 .collection-type {
   font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
   padding: 1px 6px;
   border-radius: 12px;
-  text-transform: uppercase;
-  font-weight: 600;
-  letter-spacing: 0.5px;
   align-self: flex-start;
+  letter-spacing: 0.5px;
+  transition: all 0.3s ease;
 }
 
 .collection-type.feature {
@@ -348,6 +326,62 @@ export default {
 .collection-type.unknown {
   background-color: #f5f5f5;
   color: #757575;
+}
+
+.collection-item.active .collection-type.feature {
+  background-color: rgba(25, 118, 210, 0.15);
+  color: #1976d2;
+}
+
+.collection-item.active .collection-type.coverage {
+  background-color: rgba(123, 31, 162, 0.15);
+  color: #7b1fa2;
+}
+
+.collection-item.active .collection-type.tile {
+  background-color: rgba(56, 142, 60, 0.15);
+  color: #388e3c;
+}
+
+.collection-item.active .collection-type.record {
+  background-color: rgba(245, 124, 0, 0.15);
+  color: #f57c00;
+}
+
+.collection-item.active .collection-type.unknown {
+  background-color: rgba(117, 117, 117, 0.15);
+  color: #757575;
+}
+
+.collections-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+}
+
+.collections-container {
+  overflow-y: auto;
+  height: calc(100% - 60px);
+  padding-bottom: 16px;
+}
+
+/* Scrollbar Styles */
+.collections-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.collections-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.collections-container::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb);
+  border-radius: 4px;
+}
+
+.collections-container::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover);
 }
 
 /* RTL Support */
@@ -392,10 +426,6 @@ export default {
 
   .collection-title {
     font-size: 14px;
-  }
-
-  .toggle-button {
-    padding: 4px;
   }
 
   .collections-header {

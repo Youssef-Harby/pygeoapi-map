@@ -25,6 +25,39 @@ const getInitialLocale = () => {
   return config.i18n.defaultLocale || 'en'
 }
 
+// Predefined color palette with visually appealing colors
+const COLOR_PALETTE = [
+  '#4CAF50', // Material Green
+  '#2196F3', // Material Blue
+  '#9C27B0', // Material Purple
+  '#FF9800', // Material Orange
+  '#E91E63', // Material Pink
+  '#00BCD4', // Material Cyan
+  '#3F51B5', // Material Indigo
+  '#FF5722', // Material Deep Orange
+  '#009688', // Material Teal
+  '#673AB7', // Material Deep Purple
+  '#FFC107', // Material Amber
+  '#795548', // Material Brown
+  '#607D8B', // Material Blue Grey
+  '#8BC34A', // Material Light Green
+  '#F44336'  // Material Red
+]
+
+function generateRandomColor(state) {
+  // Get a random color from our palette
+  const unusedColors = COLOR_PALETTE.filter(color => {
+    return !Object.values(state.collectionColors).includes(color)
+  })
+  
+  if (unusedColors.length > 0) {
+    return unusedColors[Math.floor(Math.random() * unusedColors.length)]
+  }
+  
+  // If all colors are used, return a random one from the palette
+  return COLOR_PALETTE[Math.floor(Math.random() * COLOR_PALETTE.length)]
+}
+
 export default createStore({
   state: {
     collections: [],
@@ -32,7 +65,8 @@ export default createStore({
     loading: false,
     error: null,
     locale: getInitialLocale(),
-    serverUrl: getInitialServerUrl()
+    serverUrl: getInitialServerUrl(),
+    collectionColors: {}
   },
   mutations: {
     SET_COLLECTIONS(state, collections) {
@@ -103,7 +137,24 @@ export default createStore({
       state.serverUrl = url.replace(/\/$/, '')
       // Store in localStorage for persistence
       localStorage.setItem('pygeoapi_server_url', state.serverUrl)
+    },
+    SET_COLLECTION_COLOR(state, { id, color }) {
+      state.collectionColors[id] = color
     }
+  },
+  getters: {
+    isCollectionActive: (state) => (id) => {
+      return state.activeCollections.includes(id)
+    },
+    getCollectionColor: (state) => (id) => {
+      if (!state.collectionColors[id]) {
+        // Generate and store a random color if none exists
+        const color = generateRandomColor(state)
+        state.collectionColors[id] = color
+      }
+      return state.collectionColors[id]
+    },
+    supportedLocales: () => config.i18n.supportedLocales
   },
   actions: {
     async fetchCollections({ commit, state }) {
@@ -159,12 +210,9 @@ export default createStore({
         // Revert to default URL on error
         commit('SET_SERVER_URL', config.server.url)
       }
-    }
-  },
-  getters: {
-    isCollectionActive: (state) => (collectionId) => {
-      return state.activeCollections.includes(collectionId)
     },
-    supportedLocales: () => config.i18n.supportedLocales
+    setCollectionColor({ commit }, { id, color }) {
+      commit('SET_COLLECTION_COLOR', { id, color })
+    }
   }
 })

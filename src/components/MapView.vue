@@ -24,7 +24,6 @@ export default {
     return {
       map: null,
       layerGroups: {},
-      layerColors: {},
       layerBounds: {},
       isInitialized: false,
       initializationAttempts: 0
@@ -129,7 +128,6 @@ export default {
           this.layerGroups[collection.id] = L.layerGroup()
         }
         const layerGroup = this.layerGroups[collection.id]
-        const color = this.getCollectionColor(collection.id)
 
         // Clear existing layers
         layerGroup.clearLayers()
@@ -142,7 +140,7 @@ export default {
         // Handle different collection types
         switch (renderType) {
           case 'feature':
-            await this.handleFeatureCollection(collection, layerGroup, color)
+            await this.handleFeatureCollection(collection, layerGroup)
             break
           case 'coverage':
             await this.handleCoverageCollection(collection, layerGroup)
@@ -163,63 +161,75 @@ export default {
         console.error(`MapView - Error loading collection ${collection.id}:`, error)
       }
     },
-    async handleFeatureCollection(collection, layerGroup, color) {
+    async handleFeatureCollection(collection, layerGroup) {
       try {
-        console.log('MapView - Loading features for collection:', collection.id)
+        console.log('Handling feature collection:', collection.id)
         const features = await fetchFeatures(this.serverUrl, collection.id, {}, this.locale)
-        console.log('Features received:', features)
-
-        if (!features || !features.features || !Array.isArray(features.features)) {
-          console.error('Invalid features response:', features)
+        const queryables = await fetchCollectionQueryables(this.serverUrl, collection.id, this.locale)
+        
+        if (!features?.features?.length) {
+          console.warn('No features found for collection:', collection.id)
           return
         }
 
-        // Create a single GeoJSON layer for all features
+        const collectionColor = this.$store.getters.getCollectionColor(collection.id)
+
         const geoJsonLayer = L.geoJSON(features, {
-          style: () => ({
-            color: color,
+          style: (feature) => ({
+            color: collectionColor,
             weight: 2,
             opacity: 0.8,
-            fillOpacity: 0.3
+            fillColor: collectionColor,
+            fillOpacity: 0.2,
+            dashArray: null
           }),
           pointToLayer: (feature, latlng) => {
             return L.circleMarker(latlng, {
-              radius: 8,
-              fillColor: color,
-              color: '#fff',
-              weight: 1,
+              radius: 6,
+              fillColor: collectionColor,
+              color: collectionColor,
+              weight: 2,
               opacity: 1,
-              fillOpacity: 0.8
+              fillOpacity: 0.6
             })
           },
-          onEachFeature: async (feature, layer) => {
-            if (feature.properties) {
-              try {
-                const queryables = await fetchCollectionQueryables(this.serverUrl, collection.id, this.locale)
-                layer.bindPopup(() => this.createPopupContent(feature.properties, queryables))
-              } catch (error) {
-                console.error('Error fetching queryables:', error)
-                layer.bindPopup(() => this.createSimplePopupContent(feature.properties))
+          onEachFeature: (feature, layer) => {
+            const popupContent = this.createPopupContent(feature.properties, queryables)
+            layer.bindPopup(popupContent)
+            
+            // Add hover effect
+            layer.on({
+              mouseover: (e) => {
+                const layer = e.target
+                layer.setStyle({
+                  weight: 3,
+                  opacity: 1,
+                  fillOpacity: 0.4
+                })
+                if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+                  layer.bringToFront()
+                }
+              },
+              mouseout: (e) => {
+                const layer = e.target
+                geoJsonLayer.resetStyle(layer)
               }
-            }
+            })
           }
         })
 
-        // Add the layer and update bounds
         layerGroup.addLayer(geoJsonLayer)
+        this.map.addLayer(layerGroup)
 
-        // Update bounds
+        // Store bounds for this collection
         const bounds = geoJsonLayer.getBounds()
         if (bounds.isValid()) {
           this.layerBounds[collection.id] = bounds
           this.map.fitBounds(bounds, { padding: [50, 50] })
-          console.log('Layer added and bounds set:', {
-            collectionId: collection.id,
-            bounds: bounds.toBBoxString()
-          })
         }
+
       } catch (error) {
-        console.error(`Error loading features for collection ${collection.id}:`, error)
+        console.error('Error handling feature collection:', collection.id, error)
       }
     },
     async handleCoverageCollection(collection, layerGroup) {
@@ -311,20 +321,6 @@ export default {
       content.appendChild(table)
       return content
     },
-    getCollectionColor(collectionId) {
-      if (!this.layerColors[collectionId]) {
-        this.layerColors[collectionId] = this.getRandomColor()
-      }
-      return this.layerColors[collectionId]
-    },
-    getRandomColor() {
-      const letters = '0123456789ABCDEF'
-      let color = '#'
-      for (let i = 0; i < 6; i++) {
-        color += letters[Math.floor(Math.random() * 16)]
-      }
-      return color
-    },
     removeCollection(collectionId) {
       try {
         console.log('Removing collection from map:', collectionId)
@@ -351,7 +347,6 @@ export default {
         // Clean up references
         delete this.layerGroups[collectionId]
         delete this.layerBounds[collectionId]
-        delete this.layerColors[collectionId]
 
         console.log('Collection removed successfully:', collectionId)
       } catch (error) {
@@ -374,7 +369,6 @@ export default {
 
         // Clear all references
         this.layerGroups = {}
-        this.layerColors = {}
         this.layerBounds = {}
 
         // Remove the map
