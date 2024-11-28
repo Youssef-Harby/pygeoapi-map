@@ -73,30 +73,29 @@ jobs:
 
       # Sign the resulting Docker image digest except on PRs
       - name: Sign the published Docker image
-        if: github.event_name != 'pull_request'
+        if: ${{ github.event_name != 'pull_request' }}
         env:
           # This step uses the identity token to provision an ephemeral certificate
           COSIGN_EXPERIMENTAL: "true"
-        # Remove the extra "sha256:" prefix from the digest
         run: |
+          IMAGE_NAME_LOWER=$(echo "${{ env.IMAGE_NAME }}" | tr '[:upper:]' '[:lower:]')
           DIGEST="${{ steps.build-and-push.outputs.digest }}"
-          cosign sign --yes ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${DIGEST}
+          cosign sign --yes "${{ env.REGISTRY }}/${IMAGE_NAME_LOWER}@${DIGEST}"
 
       # Run Trivy vulnerability scanner
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
-        if: github.event_name != 'pull_request'
+        if: ${{ github.event_name != 'pull_request' }}
         with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          image-ref: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.DOCKER_METADATA_OUTPUT_VERSION }}'
           format: 'sarif'
           output: 'trivy-results.sarif'
-          severity: 'CRITICAL,HIGH'
           timeout: '10m'
 
       # Upload Trivy scan results to GitHub Security tab
       - name: Upload Trivy scan results to GitHub Security tab
+        if: ${{ github.event_name != 'pull_request' && always() }}
         uses: github/codeql-action/upload-sarif@v3
-        if: github.event_name != 'pull_request' && always()
         with:
           sarif_file: 'trivy-results.sarif'
           category: 'Trivy'
