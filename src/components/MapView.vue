@@ -26,7 +26,8 @@ export default {
       layerGroups: {},
       layerColors: {},
       layerBounds: {},
-      isInitialized: false
+      isInitialized: false,
+      initializationAttempts: 0
     }
   },
   computed: {
@@ -47,21 +48,50 @@ export default {
   methods: {
     initMap() {
       console.log('MapView - Initializing map')
-      if (this.isInitialized) return
+      if (this.isInitialized) {
+        console.log('Map already initialized')
+        return
+      }
+
+      if (this.initializationAttempts >= 3) {
+        console.error('Failed to initialize map after 3 attempts')
+        return
+      }
+
+      this.initializationAttempts++
 
       this.$nextTick(() => {
         try {
-          this.map = L.map('map').setView([0, 0], 2)
+          if (!document.getElementById('map')) {
+            console.warn('Map container not found, retrying in 200ms')
+            setTimeout(() => this.initMap(), 200)
+            return
+          }
+
+          if (this.map) {
+            console.log('Cleaning up existing map instance')
+            this.map.remove()
+            this.map = null
+          }
+
+          this.map = L.map('map', {
+            zoomAnimation: false, // Disable zoom animation to prevent RTL issues
+            fadeAnimation: false, // Disable fade animation to prevent RTL issues
+            markerZoomAnimation: false // Disable marker zoom animation
+          }).setView([0, 0], 2)
+
           L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: ' OpenStreetMap contributors',
             maxZoom: 19
           }).addTo(this.map)
 
           this.map.on('moveend', () => {
-            console.log('MapView - Map moved:', {
-              center: this.map.getCenter(),
-              zoom: this.map.getZoom()
-            })
+            if (this.map) {
+              console.log('MapView - Map moved:', {
+                center: this.map.getCenter(),
+                zoom: this.map.getZoom()
+              })
+            }
           })
 
           // Make sure map is properly sized
@@ -69,10 +99,13 @@ export default {
             if (this.map) {
               this.map.invalidateSize()
               this.isInitialized = true
+              this.initializationAttempts = 0
+              console.log('Map initialized successfully')
             }
           }, 200)
         } catch (error) {
           console.error('Error initializing map:', error)
+          setTimeout(() => this.initMap(), 200)
         }
       })
     },
@@ -80,6 +113,11 @@ export default {
       if (!this.map || !this.isInitialized) {
         console.warn('Map not initialized yet, retrying in 200ms')
         setTimeout(() => this.loadCollectionLayer(collection), 200)
+        return
+      }
+
+      if (!collection) {
+        console.warn('Invalid collection provided')
         return
       }
 
@@ -320,6 +358,33 @@ export default {
         console.error('Error removing collection:', collectionId, error)
       }
     },
+    cleanupMap() {
+      console.log('Cleaning up map')
+      if (this.map) {
+        // Remove all layer groups
+        Object.keys(this.layerGroups).forEach(id => {
+          const group = this.layerGroups[id]
+          if (group) {
+            group.clearLayers()
+            if (this.map.hasLayer(group)) {
+              this.map.removeLayer(group)
+            }
+          }
+        })
+
+        // Clear all references
+        this.layerGroups = {}
+        this.layerColors = {}
+        this.layerBounds = {}
+
+        // Remove the map
+        this.map.remove()
+        this.map = null
+      }
+    },
+    beforeDestroy() {
+      this.cleanupMap()
+    }
   },
   watch: {
     activeCollectionObjects: {
@@ -344,6 +409,17 @@ export default {
       },
       immediate: true,
       deep: true
+    },
+    locale: {
+      handler() {
+        console.log('Locale changed, reinitializing map')
+        this.cleanupMap()
+        this.$nextTick(() => {
+          this.isInitialized = false
+          this.initializationAttempts = 0
+          this.initMap()
+        })
+      }
     }
   }
 }
@@ -351,14 +427,54 @@ export default {
 
 <style>
 .map-container {
-  width: 100%;
-  height: 100%;
-  position: relative;
+  position: absolute;
+  top: 0;
+  left: var(--sidebar-width);
+  right: 0;
+  bottom: 0;
+  transition: left 0.3s ease;
+}
+
+.sidebar-collapsed + .map-container {
+  left: var(--sidebar-collapsed-width);
 }
 
 #map {
   width: 100%;
   height: 100%;
+}
+
+/* RTL Support */
+[dir="rtl"] .map-container {
+  left: 0;
+  right: var(--sidebar-width);
+  transition: right 0.3s ease;
+}
+
+[dir="rtl"] .sidebar-collapsed + .map-container {
+  right: var(--sidebar-collapsed-width);
+}
+
+@media (max-width: 768px) {
+  .map-container {
+    position: relative;
+    left: 0;
+    flex: 1;
+    height: calc(100vh - var(--header-height) - 300px);
+  }
+
+  .sidebar-collapsed + .map-container {
+    left: 0;
+    height: calc(100vh - var(--header-height) - 40px);
+  }
+
+  [dir="rtl"] .map-container {
+    right: 0;
+  }
+
+  [dir="rtl"] .sidebar-collapsed + .map-container {
+    right: 0;
+  }
 }
 
 .popup-content {

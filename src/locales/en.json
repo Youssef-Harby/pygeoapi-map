@@ -9,7 +9,15 @@
     "apply": "Apply",
     "cancel": "Cancel",
     "edit": "Edit",
-    "save": "Save"
+    "save": "Save",
+    "retry": "Retry"
+  },
+  "sidebar": {
+    "collections": "Collections",
+    "expand": "Expand Sidebar",
+    "collapse": "Collapse Sidebar",
+    "noCollections": "No collections found",
+    "searchPlaceholder": "Search collections..."
   },
   "collections": {
     "title": "Collections",

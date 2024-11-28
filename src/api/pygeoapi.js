@@ -135,6 +135,8 @@ export function getCollectionRenderType(collection) {
     return 'coverage'
   } else if (hasTiles) {
     return 'tile'
+  } else if (collection.itemType === 'record') {
+    return 'record'
   } else if (hasItems || collection.itemType === 'feature') {
     return 'feature'
   }

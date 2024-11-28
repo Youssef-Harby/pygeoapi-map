@@ -9,7 +9,15 @@
     "apply": "تطبيق",
     "cancel": "إلغاء",
     "edit": "تعديل",
-    "save": "حفظ"
+    "save": "حفظ",
+    "retry": "إعادة المحاولة"
+  },
+  "sidebar": {
+    "collections": "المجموعات",
+    "expand": "توسيع الشريط الجانبي",
+    "collapse": "طي الشريط الجانبي",
+    "noCollections": "لم يتم العثور على مجموعات",
+    "searchPlaceholder": "البحث في المجموعات..."
   },
   "collections": {
     "title": "المجموعات",
