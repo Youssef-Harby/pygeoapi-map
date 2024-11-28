@@ -1,7 +1,10 @@
 <template>
   <div id="app" :class="{ 'rtl': isRTL }">
-    <Sidebar />
-    <MapView />
+    <Header />
+    <main class="main-content">
+      <Sidebar />
+      <MapView />
+    </main>
   </div>
 </template>
 
@@ -9,6 +12,7 @@
 import { mapActions } from 'vuex'
 import { computed } from 'vue'
 import { useStore } from 'vuex'
+import Header from '@/components/Header.vue'
 import Sidebar from '@/components/Sidebar.vue'
 import MapView from '@/components/MapView.vue'
 import config from './config.json'
@@ -16,6 +20,7 @@ import config from './config.json'
 export default {
   name: 'App',
   components: {
+    Header,
     Sidebar,
     MapView
   },
@@ -50,34 +55,30 @@ body, html {
 
 #app {
   display: flex;
+  flex-direction: column;
   height: 100vh;
   width: 100vw;
-  position: absolute;
-  top: 0;
-  left: 0;
+  overflow: hidden;
 }
 
-#app.rtl {
+.main-content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.rtl {
   direction: rtl;
 }
 
-/* RTL specific styles */
-.rtl .sidebar {
-  border-right: none;
-  border-left: 1px solid #ddd;
-}
+/* Responsive styles */
+@media (max-width: 768px) {
+  .main-content {
+    flex-direction: column;
+  }
 
-.rtl .collection-item {
-  padding: 10px 15px 10px 10px;
-}
-
-.rtl .collection-toggle {
-  margin-right: 0;
-  margin-left: 10px;
-}
-
-.rtl .collection-type {
-  margin-left: 0;
-  margin-right: auto;
+  .sidebar {
+    max-height: 40vh;
+  }
 }
 </style>

@@ -2,7 +2,6 @@
   <div class="sidebar">
     <div class="header">
       <h2>{{ $t('collections.title') }}</h2>
-      <LanguageSelector />
     </div>
     <div class="collections-list">
       <div v-if="loading" class="loading">
@@ -37,13 +36,9 @@
 
 <script>
 import { mapState, mapGetters, mapActions } from 'vuex'
-import LanguageSelector from './LanguageSelector.vue'
 
 export default {
   name: 'Sidebar',
-  components: {
-    LanguageSelector
-  },
   computed: {
     ...mapState(['collections', 'loading', 'error']),
     ...mapGetters(['isCollectionActive'])
@@ -92,7 +87,7 @@ export default {
 }
 
 .header h2 {
-  margin: 0 0 10px 0;
+  margin: 0;
   font-size: 1.2em;
   color: #333;
 }
@@ -167,13 +162,13 @@ export default {
   color: #dc3545;
 }
 
-/* RTL Specific Styles */
-:dir(rtl) .collection-toggle input {
+/* RTL Support */
+.rtl .collection-toggle input {
   margin-right: 0;
   margin-left: 8px;
 }
 
-:dir(rtl) .collection-type {
+.rtl .collection-type {
   margin-left: 0;
   margin-right: auto;
 }

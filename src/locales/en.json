@@ -1,0 +1,27 @@
+{
+  "app": {
+    "title": "PyGeoAPI Collections Viewer",
+    "description": "Interactive viewer for PyGeoAPI collections"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "apply": "Apply",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "save": "Save"
+  },
+  "collections": {
+    "title": "Collections",
+    "noCollections": "No collections found",
+    "loading": "Loading collections...",
+    "error": "Error loading collections"
+  },
+  "server": {
+    "title": "PyGeoAPI Server",
+    "current": "Current Server",
+    "change": "Change Server",
+    "placeholder": "Enter PyGeoAPI server URL",
+    "error": "Invalid server URL"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "app": {
+    "title": "عارض مجموعات PyGeoAPI",
+    "description": "عارض تفاعلي لمجموعات PyGeoAPI"
+  },
+  "common": {
+    "loading": "جاري التحميل...",
+    "error": "حدث خطأ",
+    "apply": "تطبيق",
+    "cancel": "إلغاء",
+    "edit": "تعديل",
+    "save": "حفظ"
+  },
+  "collections": {
+    "title": "المجموعات",
+    "noCollections": "لم يتم العثور على مجموعات",
+    "loading": "جاري تحميل المجموعات...",
+    "error": "خطأ في تحميل المجموعات"
+  },
+  "server": {
+    "title": "خادم PyGeoAPI",
+    "current": "الخادم الحالي",
+    "change": "تغيير الخادم",
+    "placeholder": "أدخل عنوان URL لخادم PyGeoAPI",
+    "error": "عنوان URL غير صالح"
+  }
+}

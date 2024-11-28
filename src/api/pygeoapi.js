@@ -1,9 +1,8 @@
 import axios from 'axios'
+import config from '@/config.json'
 
-const API_BASE_URL = 'https://demo.pygeoapi.io/master'
-
+// Create axios instance with dynamic base URL
 const api = axios.create({
-  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json'
   }
@@ -40,117 +39,111 @@ api.interceptors.response.use(
   }
 )
 
-export async function fetchCollections() {
+// Helper function to get language query parameter
+function getLanguageParam(locale) {
+  const localeConfig = config.i18n.supportedLocales.find(l => l.code === locale)
+  return localeConfig?.queryParam || ''
+}
+
+// Helper function to build URL with language parameter
+function buildUrl(baseUrl, path, locale) {
+  const langParam = getLanguageParam(locale)
+  const url = `${baseUrl.replace(/\/$/, '')}${path}`
+  return langParam ? `${url}${langParam}` : url
+}
+
+export async function fetchCollections(serverUrl, locale) {
   try {
-    console.log('Fetching collections')
-    const response = await api.get('/collections')
-    return response.data.collections || []
+    console.log('Fetching collections from:', serverUrl)
+    const response = await api.get(buildUrl(serverUrl, '/collections', locale))
+    if (!response.data?.collections) {
+      throw new Error('No collections found in response')
+    }
+    return response.data.collections
   } catch (error) {
     console.error('Error fetching collections:', error)
+    throw new Error(`Failed to fetch collections: ${error.message}`)
+  }
+}
+
+export async function fetchCollectionDetails(serverUrl, collectionId, locale) {
+  try {
+    const url = buildUrl(serverUrl, `/collections/${collectionId}`, locale)
+    const response = await api.get(url)
+    return response.data
+  } catch (error) {
+    console.error(`Error fetching collection ${collectionId} details:`, error)
     throw error
   }
 }
 
-export async function fetchCollectionDetails(collectionId) {
+export async function fetchFeatures(serverUrl, collectionId, params = {}, locale) {
   try {
-    console.log('Fetching collection details:', collectionId)
-    const response = await api.get(`/collections/${collectionId}`)
+    const url = buildUrl(serverUrl, `/collections/${collectionId}/items`, locale)
+    const response = await api.get(url, { params })
     return response.data
   } catch (error) {
-    console.error(`Error fetching collection details for ${collectionId}:`, error)
+    console.error(`Error fetching features for collection ${collectionId}:`, error)
     throw error
   }
 }
 
-export async function fetchFeatures(collectionId, params = {}) {
+export async function fetchCollectionQueryables(serverUrl, collectionId, locale) {
   try {
-    // Handle OGC API Features parameters
-    const queryParams = {
-      ...params,
-      // Add default limit if not specified
-      limit: params.limit || 1000,
-      // Handle bbox if provided
-      ...(params.bbox && { bbox: params.bbox.join(',') }),
-      // Handle datetime if provided
-      ...(params.datetime && { datetime: params.datetime }),
-      // Handle properties if provided
-      ...(params.properties && { properties: params.properties.join(',') }),
-      // Handle skipGeometry parameter
-      ...(params.skipGeometry !== undefined && { skipGeometry: params.skipGeometry }),
-    }
-
-    console.log('Fetching features:', { collectionId, params: queryParams })
-    const response = await api.get(`/collections/${collectionId}/items`, { params: queryParams })
+    const url = buildUrl(serverUrl, `/collections/${collectionId}/queryables`, locale)
+    const response = await api.get(url)
     return response.data
   } catch (error) {
-    console.error(`Error fetching features for ${collectionId}:`, error)
+    console.error(`Error fetching queryables for collection ${collectionId}:`, error)
     throw error
   }
 }
 
-export async function fetchCollectionQueryables(collectionId) {
+export function getWMSUrl(serverUrl, collectionId, locale) {
+  return buildUrl(serverUrl, `/collections/${collectionId}/wms`, locale)
+}
+
+export function getTileUrl(serverUrl, collectionId, format = 'mvt', locale) {
+  return buildUrl(serverUrl, `/collections/${collectionId}/tiles/${format}`, locale)
+}
+
+export async function fetchTileSetInfo(serverUrl, collectionId, locale) {
   try {
-    console.log('Fetching queryables:', collectionId)
-    const response = await api.get(`/collections/${collectionId}/queryables`)
+    const url = buildUrl(serverUrl, `/collections/${collectionId}/tiles`, locale)
+    const response = await api.get(url)
     return response.data
   } catch (error) {
-    console.error(`Error fetching queryables for ${collectionId}:`, error)
-    throw error
-  }
-}
-
-export function getWMSUrl(collectionId) {
-  return `${API_BASE_URL}/collections/${collectionId}/coverage/wms`
-}
-
-export function getTileUrl(collectionId, format = 'mvt') {
-  const path = format === 'mvt' 
-    ? `/collections/${collectionId}/tiles/WebMercatorQuad/{z}/{x}/{y}` 
-    : `/collections/${collectionId}/tiles/{z}/{x}/{y}`
-  return `${API_BASE_URL}${path}`
-}
-
-export async function fetchTileSetInfo(collectionId) {
-  try {
-    console.log('Fetching tile set info:', collectionId)
-    const response = await api.get(`/collections/${collectionId}/tiles`)
-    return response.data
-  } catch (error) {
-    console.error(`Error fetching tile set info for ${collectionId}:`, error)
+    console.error(`Error fetching tile set info for collection ${collectionId}:`, error)
     throw error
   }
 }
 
 export function getCollectionRenderType(collection) {
-  console.log('Determining render type for collection:', collection)
-  
-  // Check for features endpoint
-  if (collection.links?.some(link => 
-    link.rel === 'items' || 
-    link.href?.includes('/items')
-  )) {
-    console.log('Detected feature collection')
+  if (!collection) {
+    console.warn('No collection provided to getCollectionRenderType')
+    return 'unknown'
+  }
+
+  // Check links for specific capabilities
+  const links = collection.links || []
+  const hasWMS = links.some(link => link.rel === 'wms')
+  const hasTiles = links.some(link => link.rel === 'tiles')
+  const hasItems = links.some(link => link.rel === 'items')
+
+  // Check collection type and links
+  if (collection.itemType === 'coverage' || hasWMS) {
+    return 'coverage'
+  } else if (hasTiles) {
+    return 'tile'
+  } else if (hasItems || collection.itemType === 'feature') {
     return 'feature'
   }
 
-  // Check for coverage endpoint
-  if (collection.links?.some(link => 
-    link.rel === 'coverage' || 
-    link.href?.includes('/coverage')
-  )) {
-    console.log('Detected coverage collection')
-    return 'coverage'
-  }
+  // Log warning for unknown collection type
+  console.warn('Unknown collection type:', {
+    itemType: collection.itemType,
+    links: links.map(l => ({ rel: l.rel, type: l.type }))
+  })
 
-  // Check for tiles endpoint
-  if (collection.links?.some(link => 
-    link.rel === 'tiles' || 
-    link.href?.includes('/tiles')
-  )) {
-    console.log('Detected tile collection')
-    return 'tiles'
-  }
-
-  console.warn('Unknown collection type')
   return 'unknown'
 }

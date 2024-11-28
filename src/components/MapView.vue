@@ -12,11 +12,9 @@ import { initLeafletIcons } from '@/utils/leaflet'
 import {
   fetchCollectionDetails,
   fetchFeatures,
+  fetchCollectionQueryables,
   getWMSUrl,
   getTileUrl,
-  getVectorTileUrl,
-  fetchCollectionQueryables,
-  fetchTileSetInfo,
   getCollectionRenderType
 } from '@/api/pygeoapi'
 
@@ -32,7 +30,7 @@ export default {
     }
   },
   computed: {
-    ...mapState(['collections', 'activeCollections']),
+    ...mapState(['collections', 'activeCollections', 'serverUrl', 'locale']),
     activeCollectionObjects() {
       console.log('Computing active collection objects:', {
         activeIds: this.activeCollections,
@@ -99,9 +97,9 @@ export default {
         layerGroup.clearLayers()
 
         // Get collection details and determine render type
-        const details = await fetchCollectionDetails(collection.id)
+        const details = await fetchCollectionDetails(this.serverUrl, collection.id, this.locale)
         const renderType = getCollectionRenderType(details)
-        console.log('MapView - Collection type:', renderType)
+        console.log('MapView - Collection type:', { collectionId: collection.id, renderType, details })
 
         // Handle different collection types
         switch (renderType) {
@@ -111,7 +109,7 @@ export default {
           case 'coverage':
             await this.handleCoverageCollection(collection, layerGroup)
             break
-          case 'tiles':
+          case 'tile':
             await this.handleTileCollection(collection, layerGroup)
             break
           default:
@@ -129,175 +127,150 @@ export default {
     },
     async handleFeatureCollection(collection, layerGroup, color) {
       try {
-        const queryables = await fetchCollectionQueryables(collection.id)
-        const featuresData = await fetchFeatures(collection.id, { limit: 1000 })
-        
-        if (featuresData.features?.length > 0) {
-          const geoJsonLayer = L.geoJSON(featuresData.features, {
-            style: (feature) => ({
-              color: color,
-              weight: 2,
-              opacity: 0.8,
-              fillOpacity: 0.35
-            }),
-            pointToLayer: (feature, latlng) => {
-              return L.circleMarker(latlng, {
-                radius: 8,
-                fillColor: color,
-                color: "#000",
-                weight: 1,
-                opacity: 1,
-                fillOpacity: 0.8
-              })
-            },
-            onEachFeature: (feature, layer) => {
-              if (feature.properties) {
-                const popupContent = this.createPopupContent(feature.properties, queryables)
-                layer.bindPopup(popupContent, {
-                  maxWidth: 300,
-                  closeButton: true,
-                  autoPan: true
-                })
+        console.log('MapView - Loading features for collection:', collection.id)
+        const features = await fetchFeatures(this.serverUrl, collection.id, {}, this.locale)
+        console.log('Features received:', features)
+
+        if (!features || !features.features || !Array.isArray(features.features)) {
+          console.error('Invalid features response:', features)
+          return
+        }
+
+        // Create a single GeoJSON layer for all features
+        const geoJsonLayer = L.geoJSON(features, {
+          style: () => ({
+            color: color,
+            weight: 2,
+            opacity: 0.8,
+            fillOpacity: 0.3
+          }),
+          pointToLayer: (feature, latlng) => {
+            return L.circleMarker(latlng, {
+              radius: 8,
+              fillColor: color,
+              color: '#fff',
+              weight: 1,
+              opacity: 1,
+              fillOpacity: 0.8
+            })
+          },
+          onEachFeature: async (feature, layer) => {
+            if (feature.properties) {
+              try {
+                const queryables = await fetchCollectionQueryables(this.serverUrl, collection.id, this.locale)
+                layer.bindPopup(() => this.createPopupContent(feature.properties, queryables))
+              } catch (error) {
+                console.error('Error fetching queryables:', error)
+                layer.bindPopup(() => this.createSimplePopupContent(feature.properties))
               }
             }
-          })
+          }
+        })
 
-          layerGroup.addLayer(geoJsonLayer)
+        // Add the layer and update bounds
+        layerGroup.addLayer(geoJsonLayer)
 
-          // Store bounds for this layer
-          this.layerBounds[collection.id] = geoJsonLayer.getBounds()
-          
-          // Update map view if this is the only active layer
-          this.$nextTick(() => {
-            this.updateMapView()
+        // Update bounds
+        const bounds = geoJsonLayer.getBounds()
+        if (bounds.isValid()) {
+          this.layerBounds[collection.id] = bounds
+          this.map.fitBounds(bounds, { padding: [50, 50] })
+          console.log('Layer added and bounds set:', {
+            collectionId: collection.id,
+            bounds: bounds.toBBoxString()
           })
         }
       } catch (error) {
-        console.error('MapView - Error loading features:', error)
+        console.error(`Error loading features for collection ${collection.id}:`, error)
       }
     },
     async handleCoverageCollection(collection, layerGroup) {
-      const wmsUrl = getWMSUrl(collection.id)
-      const wmsLayer = L.tileLayer.wms(wmsUrl, {
-        layers: collection.id,
-        format: 'image/png',
-        transparent: true,
-        version: '1.3.0'
-      })
-      layerGroup.addLayer(wmsLayer)
+      try {
+        const wmsUrl = getWMSUrl(this.serverUrl, collection.id, this.locale)
+        console.log('Adding WMS layer:', wmsUrl)
+        
+        const layer = L.tileLayer.wms(wmsUrl, {
+          layers: collection.id,
+          format: 'image/png',
+          transparent: true,
+          version: '1.3.0'
+        })
+        
+        layerGroup.addLayer(layer)
+        console.log('WMS layer added:', collection.id)
+      } catch (error) {
+        console.error(`Error loading coverage for collection ${collection.id}:`, error)
+      }
     },
     async handleTileCollection(collection, layerGroup) {
       try {
-        // Get tile set info
-        const tileInfo = await fetchTileSetInfo(collection.id)
-        console.log('MapView - Tile info:', tileInfo)
-
-        // Check if vector tiles are supported
-        const vectorTilesSupported = tileInfo.links?.some(link => 
-          link.type === 'application/vnd.mapbox-vector-tile')
-
-        if (vectorTilesSupported) {
-          const vectorTileUrl = getTileUrl(collection.id, 'mvt')
-          const vectorTileLayer = L.tileLayer(vectorTileUrl)
-          layerGroup.addLayer(vectorTileLayer)
-        } else {
-          const tileUrl = getTileUrl(collection.id)
-          const tileLayer = L.tileLayer(tileUrl)
-          layerGroup.addLayer(tileLayer)
-        }
-      } catch (error) {
-        console.error('MapView - Error loading tiles:', error)
-      }
-    },
-    updateMapView() {
-      if (!this.map || !this.isInitialized) return
-
-      try {
-        const activeCollections = this.activeCollectionObjects
-        if (activeCollections.length === 0) return
-
-        // If only one collection is active, zoom to its bounds
-        if (activeCollections.length === 1) {
-          const bounds = this.layerBounds[activeCollections[0].id]
-          if (bounds && bounds.isValid()) {
-            this.map.setView(bounds.getCenter(), this.map.getBoundsZoom(bounds))
-          }
-        } else {
-          // For multiple collections, fit to combined bounds
-          const bounds = L.latLngBounds([])
-          activeCollections.forEach(collection => {
-            const layerBounds = this.layerBounds[collection.id]
-            if (layerBounds && layerBounds.isValid()) {
-              bounds.extend(layerBounds)
-            }
-          })
-          
-          if (bounds.isValid()) {
-            this.map.setView(bounds.getCenter(), this.map.getBoundsZoom(bounds))
-          }
-        }
-      } catch (error) {
-        console.error('Error updating map view:', error)
-      }
-    },
-    removeCollection(collectionId) {
-      if (!this.map || !this.layerGroups[collectionId]) return
-
-      try {
-        const layerGroup = this.layerGroups[collectionId]
+        const tileUrl = getTileUrl(this.serverUrl, collection.id, 'mvt', this.locale)
+        console.log('Adding tile layer:', tileUrl)
         
-        // Close any open popups
-        layerGroup.eachLayer(layer => {
-          if (layer.closePopup) {
-            layer.closePopup()
-          }
+        const layer = L.tileLayer(tileUrl, {
+          tileSize: 256,
+          maxZoom: 22
         })
-
-        // Remove from map and clear
-        if (this.map.hasLayer(layerGroup)) {
-          this.map.removeLayer(layerGroup)
-        }
-        layerGroup.clearLayers()
         
-        // Clean up references
-        delete this.layerGroups[collectionId]
-        delete this.layerBounds[collectionId]
-        
-        // Update view for remaining layers
-        this.$nextTick(() => {
-          this.updateMapView()
-        })
+        layerGroup.addLayer(layer)
+        console.log('Tile layer added:', collection.id)
       } catch (error) {
-        console.error('Error removing collection:', error)
+        console.error(`Error loading tiles for collection ${collection.id}:`, error)
       }
     },
     createPopupContent(properties, queryables) {
-      if (!properties) return 'No properties available'
-
       const content = document.createElement('div')
-      content.className = 'feature-popup'
+      content.className = 'popup-content'
+
+      const table = document.createElement('table')
+      table.className = 'property-table'
 
       Object.entries(properties).forEach(([key, value]) => {
-        const property = queryables?.properties?.[key]
-        if (value !== null && value !== undefined) {
-          const row = document.createElement('div')
-          row.className = 'property-row'
-          
-          const label = document.createElement('strong')
-          label.textContent = property?.title || key
-          label.className = 'property-label'
-          
-          const valueElement = document.createElement('span')
-          valueElement.textContent = value
-          valueElement.className = 'property-value'
-          
-          row.appendChild(label)
-          row.appendChild(document.createTextNode(': '))
-          row.appendChild(valueElement)
-          content.appendChild(row)
-        }
+        const queryable = queryables?.properties?.[key]
+        if (!queryable) return
+
+        const row = document.createElement('tr')
+        
+        const keyCell = document.createElement('td')
+        keyCell.className = 'property-key'
+        keyCell.textContent = queryable.title || key
+        
+        const valueCell = document.createElement('td')
+        valueCell.className = 'property-value'
+        valueCell.textContent = value
+
+        row.appendChild(keyCell)
+        row.appendChild(valueCell)
+        table.appendChild(row)
       })
 
+      content.appendChild(table)
+      return content
+    },
+    createSimplePopupContent(properties) {
+      const content = document.createElement('div')
+      content.className = 'popup-content'
+
+      const table = document.createElement('table')
+      table.className = 'property-table'
+
+      Object.entries(properties).forEach(([key, value]) => {
+        const row = document.createElement('tr')
+        
+        const keyCell = document.createElement('td')
+        keyCell.className = 'property-key'
+        keyCell.textContent = key
+        
+        const valueCell = document.createElement('td')
+        valueCell.className = 'property-value'
+        valueCell.textContent = value
+
+        row.appendChild(keyCell)
+        row.appendChild(valueCell)
+        table.appendChild(row)
+      })
+
+      content.appendChild(table)
       return content
     },
     getCollectionColor(collectionId) {
@@ -313,38 +286,59 @@ export default {
         color += letters[Math.floor(Math.random() * 16)]
       }
       return color
-    }
+    },
+    removeCollection(collectionId) {
+      try {
+        console.log('Removing collection from map:', collectionId)
+        if (!this.map || !this.layerGroups[collectionId]) {
+          console.warn('No layer group found for collection:', collectionId)
+          return
+        }
+
+        const layerGroup = this.layerGroups[collectionId]
+        
+        // Remove all layers from the group
+        layerGroup.eachLayer(layer => {
+          if (layer.closePopup) {
+            layer.closePopup()
+          }
+          layerGroup.removeLayer(layer)
+        })
+
+        // Remove the layer group from the map
+        if (this.map.hasLayer(layerGroup)) {
+          this.map.removeLayer(layerGroup)
+        }
+
+        // Clean up references
+        delete this.layerGroups[collectionId]
+        delete this.layerBounds[collectionId]
+        delete this.layerColors[collectionId]
+
+        console.log('Collection removed successfully:', collectionId)
+      } catch (error) {
+        console.error('Error removing collection:', collectionId, error)
+      }
+    },
   },
   watch: {
     activeCollectionObjects: {
       handler(newCollections, oldCollections = []) {
-        console.log('Active collection objects changed:', {
-          new: newCollections,
-          old: oldCollections
-        })
+        console.log('Active collection objects changed:', { new: newCollections, old: oldCollections })
         
-        if (!this.map || !this.isInitialized) {
-          console.warn('Map not initialized yet')
-          return
-        }
-
         // Handle removed collections
-        if (oldCollections) {
-          oldCollections.forEach(collection => {
-            if (!newCollections.find(c => c.id === collection.id)) {
-              console.log('Removing collection layer:', collection.id)
-              this.removeCollection(collection.id)
-            }
-          })
-        }
+        oldCollections.forEach(collection => {
+          if (!newCollections.find(c => c.id === collection.id)) {
+            console.log('Removing collection:', collection.id)
+            this.removeCollection(collection.id)
+          }
+        })
 
-        // Handle new collections
+        // Handle added collections
         newCollections.forEach(collection => {
           if (!oldCollections.find(c => c.id === collection.id)) {
             console.log('Adding new collection layer:', collection.id)
-            this.$nextTick(() => {
-              this.loadCollectionLayer(collection)
-            })
+            this.loadCollectionLayer(collection)
           }
         })
       },
@@ -357,7 +351,8 @@ export default {
 
 <style>
 .map-container {
-  flex: 1;
+  width: 100%;
+  height: 100%;
   position: relative;
 }
 
@@ -366,35 +361,28 @@ export default {
   height: 100%;
 }
 
-.feature-popup {
-  padding: 8px;
+.popup-content {
+  padding: 10px;
   max-height: 300px;
   overflow-y: auto;
 }
 
-.property-row {
-  margin-bottom: 4px;
-  display: flex;
-  gap: 8px;
+.property-table {
+  width: 100%;
+  border-collapse: collapse;
 }
 
-.property-label {
-  font-weight: 600;
-  color: #333;
+.property-table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid #eee;
+}
+
+.property-key {
+  font-weight: bold;
+  color: #666;
 }
 
 .property-value {
-  color: #666;
-  word-break: break-word;
-}
-
-/* Override Leaflet popup styles */
-.leaflet-popup-content {
-  margin: 8px;
-  min-width: 200px;
-}
-
-.leaflet-popup-content-wrapper {
-  border-radius: 4px;
+  color: #333;
 }
 </style>
