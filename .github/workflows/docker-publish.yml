@@ -44,18 +44,23 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set lowercase image name
+        run: |
+          echo "IMAGE_NAME_LOWER=${IMAGE_NAME,,}" >> $GITHUB_ENV
+        env:
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
+
       - name: Extract Docker metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ toLowerCase(env.IMAGE_NAME) }}
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}
           tags: |
             type=ref,event=branch
             type=ref,event=pr
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=sha,format=long
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha
 
       - name: Build and push Docker image
         id: build-and-push
@@ -86,10 +91,8 @@ jobs:
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         if: ${{ github.event_name != 'pull_request' }}
-        env:
-          IMAGE_NAME_LOWER: ${{ env.REGISTRY }}/${{ toLowerCase(env.IMAGE_NAME) }}:${{ env.DOCKER_METADATA_OUTPUT_VERSION }}
         with:
-          image-ref: ${{ env.IMAGE_NAME_LOWER }}
+          image-ref: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}:${{ env.DOCKER_METADATA_OUTPUT_VERSION }}'
           format: 'sarif'
           output: 'trivy-results.sarif'
           timeout: '10m'
