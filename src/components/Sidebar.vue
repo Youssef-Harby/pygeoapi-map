@@ -112,9 +112,15 @@ export default {
 
     const toggleCollection = async (id) => {
       try {
+        // Prevent multiple rapid clicks
+        if (loading.value) return
+        
+        store.commit('SET_LOADING', true)
         await store.dispatch('toggleCollection', id)
       } catch (error) {
         console.error('Error toggling collection:', error)
+      } finally {
+        store.commit('SET_LOADING', false)
       }
     }
 

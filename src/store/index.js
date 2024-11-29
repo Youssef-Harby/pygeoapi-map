@@ -9,7 +9,7 @@ export default createStore({
     collections: [],
     activeCollections: [],
     collectionColors: {},
-    loading: true,
+    loading: false,
     error: null,
     locale: localStorage.getItem('pygeoapi_locale') || 'en-US'
   },
@@ -28,32 +28,25 @@ export default createStore({
     },
     SET_COLLECTIONS(state, collections) {
       state.collections = collections
+      // Reset active collections when collections change
+      state.activeCollections = []
+      // Reset collection colors
+      state.collectionColors = {}
     },
     SET_ACTIVE_COLLECTIONS(state, collectionIds) {
       state.activeCollections = collectionIds
     },
-    TOGGLE_COLLECTION(state, { collectionId, currentlyActive }) {
-      const index = state.activeCollections.indexOf(collectionId)
-      if (currentlyActive && index !== -1) {
-        // Remove collection if it's active
-        state.activeCollections.splice(index, 1)
-      } else if (!currentlyActive && index === -1) {
-        // Add collection if it's not active
-        state.activeCollections.push(collectionId)
-      }
-    },
-    SET_COLLECTION_COLOR(state, { id, color }) {
-      state.collectionColors[id] = color
-    },
     SET_LOCALE(state, locale) {
       state.locale = locale
       localStorage.setItem('pygeoapi_locale', locale)
-      
-      // Update document attributes if locale config exists
-      const localeConfig = state.config?.i18n?.supportedLocales?.find(l => l.code === locale)
-      if (localeConfig) {
-        document.documentElement.dir = localeConfig.direction
-        document.documentElement.lang = locale
+      // Reset collections state when locale changes
+      state.activeCollections = []
+      state.collectionColors = {}
+    },
+    SET_COLLECTION_COLOR(state, { id, color }) {
+      state.collectionColors = {
+        ...state.collectionColors,
+        [id]: color
       }
     },
     SET_SERVER_URL(state, url) {
@@ -62,23 +55,10 @@ export default createStore({
         state.config.server.url = url
       }
       localStorage.setItem('pygeoapi_server_url', url)
+      // Reset collections state when server URL changes
+      state.activeCollections = []
+      state.collectionColors = {}
     }
-  },
-  getters: {
-    isCollectionActive: state => collectionId => state.activeCollections.includes(collectionId),
-    getCollectionColor: (state) => (collectionId) => {
-      if (!state.collectionColors[collectionId]) {
-        // Generate a random color if none exists
-        const color = '#' + Math.floor(Math.random()*16777215).toString(16)
-        state.collectionColors[collectionId] = color
-      }
-      return state.collectionColors[collectionId]
-    },
-    supportedLocales: state => state.config?.i18n?.supportedLocales || [],
-    currentLocale: state => state.locale,
-    serverUrl: state => state.config?.server?.url || '',
-    defaultLocale: state => state.config?.i18n?.defaultLocale || 'en-US',
-    fallbackLocale: state => state.config?.i18n?.fallbackLocale || 'en-US'
   },
   actions: {
     async initializeApp({ commit, dispatch }) {
@@ -119,41 +99,60 @@ export default createStore({
       }
     },
     async fetchCollections({ commit, state }) {
-      commit('SET_LOADING', true)
       try {
-        if (!state.config?.server?.url) {
+        commit('SET_LOADING', true)
+        const serverUrl = state.config?.server?.url
+        if (!serverUrl) {
           throw new Error('Server URL not configured')
         }
-        const collections = await fetchCollections(state.config.server.url, state.locale)
+
+        const collections = await fetchCollections(serverUrl, state.locale)
         commit('SET_COLLECTIONS', collections)
       } catch (error) {
         console.error('Error fetching collections:', error)
-        commit('SET_ERROR', 'Failed to fetch collections')
+        commit('SET_ERROR', error.message)
       } finally {
         commit('SET_LOADING', false)
       }
     },
-    async changeLocale({ commit }, locale) {
+    async changeLocale({ commit, dispatch }, locale) {
       try {
         await loadLocaleMessages(locale)
         i18n.global.locale.value = locale
+        // Set locale first to ensure UI updates
         commit('SET_LOCALE', locale)
+        // Then reload collections with new locale
+        await dispatch('fetchCollections')
       } catch (error) {
         console.error('Error changing locale:', error)
+        commit('SET_ERROR', error.message)
       }
     },
     async toggleCollection({ commit, state }, collectionId) {
       try {
-        const currentlyActive = state.activeCollections.includes(collectionId)
-        commit('TOGGLE_COLLECTION', { collectionId, currentlyActive })
-        return Promise.resolve()
+        const activeCollections = [...state.activeCollections]
+        const index = activeCollections.indexOf(collectionId)
+        
+        if (index === -1) {
+          activeCollections.push(collectionId)
+        } else {
+          activeCollections.splice(index, 1)
+        }
+        
+        commit('SET_ACTIVE_COLLECTIONS', activeCollections)
+        
+        // If collection is being activated, ensure it has a color
+        if (index === -1) {
+          const collection = state.collections.find(c => c.id === collectionId)
+          if (collection && !state.collectionColors[collectionId]) {
+            const color = generateRandomColor()
+            commit('SET_COLLECTION_COLOR', { id: collectionId, color })
+          }
+        }
       } catch (error) {
-        console.error('Error in toggleCollection:', error)
-        return Promise.reject(error)
+        console.error('Error toggling collection:', error)
+        throw error
       }
-    },
-    setCollectionColor({ commit }, { id, color }) {
-      commit('SET_COLLECTION_COLOR', { id, color })
     },
     async updateServerUrl({ commit, dispatch }, url) {
       try {
@@ -165,5 +164,20 @@ export default createStore({
         throw error
       }
     }
+  },
+  getters: {
+    isCollectionActive: (state) => (id) => {
+      return state.activeCollections.includes(id)
+    },
+    getCollectionColor: (state) => (id) => {
+      return state.collectionColors[id] || '#000000'
+    },
+    currentLocale: (state) => state.locale,
+    serverUrl: (state) => state.config?.server?.url || '',
+    supportedLocales: (state) => state.config?.i18n?.supportedLocales || []
   }
 })
+
+function generateRandomColor() {
+  return '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0')
+}
