@@ -1,6 +1,6 @@
 <template>
   <header class="header">
-    <h1 class="title">{{ $t('app.title') }}</h1>
+    <h1 class="title">{{ headerTitle }}</h1>
     
     <div class="server-selector">
       <div class="server-display" @click="showServerInput = !showServerInput">
@@ -63,6 +63,10 @@ export default {
     },
     locale() {
       return this.currentLocale
+    },
+    headerTitle() {
+      const currentLocaleObj = this.supportedLocales.find(locale => locale.code === this.currentLocale)
+      return currentLocaleObj?.headerTitle || 'pygeoapi-map'
     }
   },
   methods: {

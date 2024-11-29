@@ -11,14 +11,16 @@
         "name": "English",
         "direction": "ltr",
         "queryParam": null,
-        "flag": "🇺🇸"
+        "flag": "🇺🇸",
+        "headerTitle": "pygeoapi-map"
       },
       {
         "code": "ar-EG",
         "name": "العربية",
         "direction": "rtl",
         "queryParam": "?lang=ar-EG",
-        "flag": "🇪🇬"
+        "flag": "🇪🇬",
+        "headerTitle": "خريطة pygeoapi"
       }
     ]
   },
