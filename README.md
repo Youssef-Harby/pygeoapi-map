@@ -20,7 +20,7 @@ A modern, multilingual web application for visualizing and interacting with PyGe
 - ✅ OGC API - Features (GeoJSON)
 - ⬜️ OGC API - Coverages
 - ⬜️ OGC API - Tiles (Vector Tiles)
-- ⬜️ OGC API - Records (Display BBOX Features)
+- ✅ OGC API - Records (Display BBOX Features)
 
 ## Quick Start
 
