@@ -216,11 +216,6 @@ export default {
 
         // Store layer bounds for later use
         this.layerBounds[collection.id] = geoJsonLayer.getBounds()
-
-        // Fit map to layer bounds if this is the first layer
-        if (Object.keys(this.layerBounds).length === 1) {
-          this.map.fitBounds(geoJsonLayer.getBounds())
-        }
       } catch (error) {
         console.error(`Error handling feature collection ${collection.id}:`, error)
       }
@@ -261,51 +256,68 @@ export default {
     },
     async handleRecordGeoJSONCollection(collection, layerGroup) {
       try {
-        const [features, queryables] = await Promise.all([
-          fetchFeatures(this.serverUrl, collection.id, {}, this.locale),
-          fetchCollectionQueryables(this.serverUrl, collection.id, this.locale).catch(() => null)
-        ])
-
-        if (!features || !features.features) {
-          console.warn('No features found in record-geojson collection')
+        console.log('Handling record GeoJSON collection:', collection.id)
+        if (!this.serverUrl) {
+          throw new Error('Server URL not configured')
+        }
+        const features = await fetchFeatures(this.serverUrl, collection.id, {}, this.locale)
+        const queryables = await fetchCollectionQueryables(this.serverUrl, collection.id, this.locale)
+        
+        if (!features?.features?.length) {
+          console.warn('No features found for record collection:', collection.id)
           return
         }
 
+        const collectionColor = this.$store.getters.getCollectionColor(collection.id)
+
         const geoJsonLayer = L.geoJSON(features, {
-          style: () => ({
-            color: collection.color || '#3388ff',
+          style: (feature) => ({
+            color: collectionColor,
             weight: 2,
             opacity: 0.8,
-            fillOpacity: 0.2
+            fillColor: collectionColor,
+            fillOpacity: 0.2,
+            dashArray: null
           }),
           pointToLayer: (feature, latlng) => {
             return L.circleMarker(latlng, {
-              radius: 8,
-              fillColor: collection.color || '#3388ff',
-              color: '#fff',
-              weight: 1,
+              radius: 6,
+              fillColor: collectionColor,
+              color: collectionColor,
+              weight: 2,
               opacity: 1,
-              fillOpacity: 0.8
+              fillOpacity: 0.6
             })
           },
           onEachFeature: (feature, layer) => {
-            if (feature.properties) {
-              const popupContent = queryables
-                ? this.createPopupContent(feature.properties, queryables)
-                : this.createSimplePopupContent(feature.properties)
-              layer.bindPopup(popupContent)
-            }
+            const popupContent = this.createPopupContent(feature.properties, queryables)
+            layer.bindPopup(popupContent)
+            
+            // Add hover effect
+            layer.on({
+              mouseover: (e) => {
+                const layer = e.target
+                layer.setStyle({
+                  weight: 3,
+                  opacity: 1,
+                  fillOpacity: 0.4
+                })
+                if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+                  layer.bringToFront()
+                }
+              },
+              mouseout: (e) => {
+                const layer = e.target
+                geoJsonLayer.resetStyle(layer)
+              }
+            })
           }
         }).addTo(layerGroup)
 
-        // Update bounds
-        const bounds = geoJsonLayer.getBounds()
-        if (bounds.isValid()) {
-          this.layerBounds[collection.id] = bounds
-          this.updateMapBounds()
-        }
+        // Store layer bounds for later use
+        this.layerBounds[collection.id] = geoJsonLayer.getBounds()
       } catch (error) {
-        console.error('Error handling record-geojson collection:', error)
+        console.error(`Error handling record-geojson collection ${collection.id}:`, error)
       }
     },
     createPopupContent(properties, queryables) {
@@ -420,28 +432,54 @@ export default {
     },
     beforeDestroy() {
       this.cleanupMap()
+    },
+    getActiveBounds() {
+      const activeBounds = Object.entries(this.layerBounds)
+        .filter(([id]) => this.activeCollections.includes(id))
+        .map(([, bounds]) => bounds)
+
+      if (activeBounds.length === 0) return null
+
+      return activeBounds.reduce((total, current) => {
+        if (!total) return current
+        return total.extend(current)
+      }, null)
     }
   },
   watch: {
     activeCollectionObjects: {
       handler(newCollections, oldCollections = []) {
-        console.log('Active collection objects changed:', { new: newCollections, old: oldCollections })
-        
-        // Handle removed collections
+        console.log('Active collection objects changed:', {
+          new: newCollections,
+          old: oldCollections
+        })
+
+        // Find removed collections
         oldCollections.forEach(collection => {
           if (!newCollections.find(c => c.id === collection.id)) {
-            console.log('Removing collection:', collection.id)
             this.removeCollection(collection.id)
           }
         })
 
-        // Handle added collections
-        newCollections.forEach(collection => {
+        // Add new collections
+        newCollections.forEach(async collection => {
           if (!oldCollections.find(c => c.id === collection.id)) {
-            console.log('Adding new collection layer:', collection.id)
-            this.loadCollectionLayer(collection)
+            await this.loadCollectionLayer(collection)
           }
         })
+
+        // Update map bounds if there are active collections
+        if (newCollections.length > 0) {
+          this.$nextTick(() => {
+            const bounds = this.getActiveBounds()
+            if (bounds && bounds.isValid()) {
+              this.map.fitBounds(bounds, { 
+                padding: [50, 50],
+                maxZoom: 16  // Prevent excessive zooming
+              })
+            }
+          })
+        }
       },
       immediate: true,
       deep: true

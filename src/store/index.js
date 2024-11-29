@@ -33,9 +33,12 @@ export default createStore({
       state.activeCollections = collectionIds
     },
     TOGGLE_COLLECTION(state, { collectionId, currentlyActive }) {
-      if (currentlyActive) {
-        state.activeCollections = state.activeCollections.filter(id => id !== collectionId)
-      } else {
+      const index = state.activeCollections.indexOf(collectionId)
+      if (currentlyActive && index !== -1) {
+        // Remove collection if it's active
+        state.activeCollections.splice(index, 1)
+      } else if (!currentlyActive && index === -1) {
+        // Add collection if it's not active
         state.activeCollections.push(collectionId)
       }
     },
@@ -52,6 +55,13 @@ export default createStore({
         document.documentElement.dir = localeConfig.direction
         document.documentElement.lang = locale
       }
+    },
+    SET_SERVER_URL(state, url) {
+      if (state.config) {
+        state.config.server = state.config.server || {}
+        state.config.server.url = url
+      }
+      localStorage.setItem('pygeoapi_server_url', url)
     }
   },
   getters: {
@@ -73,11 +83,27 @@ export default createStore({
   actions: {
     async initializeApp({ commit, dispatch }) {
       try {
-        // Load config from mounted path
-        const response = await axios.get('/config.json')
+        // Get the base path from window location
+        const basePath = window.location.pathname.endsWith('/') 
+          ? window.location.pathname 
+          : window.location.pathname + '/'
+        
+        // Construct config path relative to current location
+        const configPath = `${basePath}config.json`
+        console.log('Loading config from:', configPath)
+        
+        const response = await axios.get(configPath)
         if (!response.data) {
           throw new Error('Config data is empty')
         }
+
+        // Check for stored server URL
+        const storedServerUrl = localStorage.getItem('pygeoapi_server_url')
+        if (storedServerUrl) {
+          response.data.server = response.data.server || {}
+          response.data.server.url = storedServerUrl
+        }
+        
         commit('SET_CONFIG', response.data)
         
         // Set initial locale
@@ -116,12 +142,28 @@ export default createStore({
         console.error('Error changing locale:', error)
       }
     },
-    toggleCollection({ commit, state }, collectionId) {
-      const currentlyActive = state.activeCollections.includes(collectionId)
-      commit('TOGGLE_COLLECTION', { collectionId, currentlyActive })
+    async toggleCollection({ commit, state }, collectionId) {
+      try {
+        const currentlyActive = state.activeCollections.includes(collectionId)
+        commit('TOGGLE_COLLECTION', { collectionId, currentlyActive })
+        return Promise.resolve()
+      } catch (error) {
+        console.error('Error in toggleCollection:', error)
+        return Promise.reject(error)
+      }
     },
     setCollectionColor({ commit }, { id, color }) {
       commit('SET_COLLECTION_COLOR', { id, color })
+    },
+    async updateServerUrl({ commit, dispatch }, url) {
+      try {
+        commit('SET_SERVER_URL', url)
+        // Reload collections with new server URL
+        await dispatch('fetchCollections')
+      } catch (error) {
+        console.error('Error updating server URL:', error)
+        throw error
+      }
     }
   }
 })

@@ -110,8 +110,12 @@ export default {
       )
     })
 
-    const toggleCollection = (id) => {
-      store.dispatch('toggleCollection', id)
+    const toggleCollection = async (id) => {
+      try {
+        await store.dispatch('toggleCollection', id)
+      } catch (error) {
+        console.error('Error toggling collection:', error)
+      }
     }
 
     const retryFetch = () => {
