@@ -1,48 +1,156 @@
-# PyGeoAPI Collections Viewer
+# pygeoapi-map
 
-## Overview
-This is a Vue.js application that retrieves collections from the PyGeoAPI demo server and displays them on an interactive Leaflet map with a side panel for layer toggling and language switching.
+A modern, multilingual web application for visualizing and interacting with PyGeoAPI collections. Built with Vue.js and Leaflet, it provides an intuitive interface for exploring geospatial data served through PyGeoAPI.
+
+![alt text](screenshot.png)
 
 ## Features
-- Fetch collections from https://demo.pygeoapi.io/master/collections
-- Interactive Leaflet map
-- Side panel with collection list
-- Layer toggling
-- Internationalization (i18n) support
-- RTL and LTR language support (English and Arabic)
 
-## Prerequisites
-- Node.js (v14 or later)
-- npm (v6 or later)
+- 🌍 Interactive map visualization using Leaflet
+- 🎨 Dynamic collection styling with auto-generated colors
+- 🌐 Multilingual support (en-US, ar-EG)
+- 🔄 Real-time collection toggling
+- 📱 Responsive design
+- ⚡ Dynamic server URL configuration
+- 🎯 Automatic zoom to collection bounds
+- 💾 Persistent user preferences
 
-## Installation
-1. Clone the repository
+## Supported Collection Types
+
+- ✅ OGC API - Features (GeoJSON)
+- ⬜️ OGC API - Coverages
+- ⬜️ OGC API - Tiles (Vector Tiles)
+- ⬜️ OGC API - Records (Display BBOX Features)
+
+## Quick Start
+
+### Using Docker
+
+1. Create a `config.json` file:
+
+```json
+{
+  "server": {
+    "url": "https://demo.pygeoapi.io/master/"
+  },
+  "i18n": {
+    "defaultLocale": "en-US",
+    "supportedLocales": [
+      {
+        "code": "en-US",
+        "name": "English",
+        "flag": "🇺🇸",
+        "direction": "ltr",
+        "headerTitle": "pygeoapi-map"
+      },
+      {
+        "code": "ar-EG",
+        "name": "العربية",
+        "flag": "🇪🇬",
+        "direction": "rtl",
+        "headerTitle": "خريطة pygeoapi"
+      }
+    ]
+  }
+}
+```
+
+2. Run using Docker:
+
+```bash
+docker run -d \
+  --name pygeoapi-map \
+  -p 8080:80 \
+  -v $(pwd)/config.json:/srv/config.json:ro \
+  ghcr.io/youssef-harby/pygeoapi-map:latest
+```
+
+### Using Docker Compose
+
+1. Create a `docker-compose.yml` file:
+
+```yaml
+services:
+  pygeoapi-map:
+    image: ghcr.io/youssef-harby/pygeoapi-map:latest
+    container_name: pygeoapi-map
+    ports:
+      - "8080:80"
+    volumes:
+      - ./config.json:/srv/config.json:ro
+```
+
+2. Run using Docker Compose:
+
+```bash
+docker compose up -d
+```
+
+The application will be available at `http://localhost:8080`
+
+## Development Setup
+
+1. Clone the repository:
+```bash
+git clone https://github.com/youssef-harby/pygeoapi-map.git
+cd pygeoapi-map
+```
+
 2. Install dependencies:
 ```bash
 npm install
 ```
 
-## Running the Application
+3. Create a `public/config.json` file with your PyGeoAPI server configuration.
+
+4. Start the development server:
 ```bash
 npm run serve
 ```
 
-## Building for Production
+5. Build for production:
 ```bash
 npm run build
 ```
 
-## Technologies Used
-- Vue.js 3
-- Vuex
-- Vue I18n
-- Leaflet
-- Axios
+## Configuration
 
-## How to Use
-1. The application loads collections from the PyGeoAPI demo server
-2. Use the checkboxes in the side panel to toggle layers on the map
-3. Switch between English and Arabic languages using the language buttons
+The `config.json` file supports the following options:
+
+```json
+{
+  "server": {
+    "url": "https://demo.pygeoapi.io/master"  // Your PyGeoAPI server URL
+  },
+  "i18n": {
+    "defaultLocale": "en-US",          // Default language
+    "supportedLocales": [              // Available languages
+      {
+        "code": "en-US",
+        "name": "English",
+        "flag": "🇺🇸",
+        "direction": "ltr",
+        "headerTitle": "pygeoapi-map"  // Header title in English
+      }
+    ]
+  }
+}
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch: `git checkout -b feature/my-new-feature`
+3. Commit your changes: `git commit -am 'Add some feature'`
+4. Push to the branch: `git push origin feature/my-new-feature`
+5. Submit a pull request
 
 ## License
-MIT License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+- [PyGeoAPI](https://pygeoapi.io/) for the amazing geospatial server
+- [Vue.js](https://vuejs.org/) for the reactive frontend framework
+- [Leaflet](https://leafletjs.com/) for the mapping capabilities
